@@ -31,14 +31,13 @@ Item {
         id: writer
         path: panel.luaPath
         atomicWrites: true
-        onSaved: reloadProc.running = true
+        onSaved: { reloadProc.running = true; panel.rebound(); }
         onSaveFailed: (err) => console.log("rishot: rishot.lua write failed: " + err)
     }
 
     Process {
         id: reloadProc
-        command: ["hyprctl", "reload"]
-        onExited: (code) => { console.log("rishot: hyprctl reload exit " + code); panel.rebound(); }
+        command: ["setsid", "-f", "sh", "-c", "sleep 0.5; hyprctl reload"]
     }
 
     function applyBind(bind) {
