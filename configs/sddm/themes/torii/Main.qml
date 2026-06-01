@@ -27,8 +27,6 @@ Item {
     readonly property color cream: "#e6d6cb"
     readonly property color brightWhite: "#fff6f0"
     readonly property color dim: "#aeb3bd"
-    readonly property color dim2: "#9298a3"
-    readonly property color hair: Qt.rgba(150 / 255, 172 / 255, 212 / 255, 0.2)
     readonly property color hairStrong: Qt.rgba(150 / 255, 172 / 255, 212 / 255, 0.32)
     readonly property color emberBase: "#1D120E"
 
@@ -40,12 +38,6 @@ Item {
             return "erik"
         var n = userProbe.fieldAt(currentUserIndex, "name")
         return n.length > 0 ? n : "user"
-    }
-    readonly property string currentUserReal: {
-        if (!hasSddm)
-            return "erik"
-        var r = userProbe.fieldAt(currentUserIndex, "realName")
-        return r.length > 0 ? r : currentUserName
     }
     readonly property url currentUserIcon: hasSddm ? userProbe.iconAt(currentUserIndex) : ""
 
@@ -111,7 +103,6 @@ Item {
                 Component.onCompleted: {
                     probe.record(index, "name", model.name)
                     probe.record(index, "realName", model.realName)
-                    probe.record(index, "comment", model.comment)
                     probe.record(index, "icon", model.icon)
                 }
             }
@@ -189,7 +180,6 @@ Item {
                 readonly property real travel: (300 + (index * 53 % 90)) * root.s
                 readonly property real drift: ((index * 29 % 36) - 18) * root.s
                 readonly property int dur: 6000 + (index * 411 % 7000)
-                readonly property int startDelay: -(index * 523 % dur)
 
                 width: sz
                 height: sz
@@ -617,6 +607,8 @@ Item {
                             root.submit()
                             event.accepted = true
                         } else if (event.key === Qt.Key_Escape) {
+                            userPopup.close()
+                            sessionPopup.close()
                             root.clearPassword()
                             event.accepted = true
                         }
