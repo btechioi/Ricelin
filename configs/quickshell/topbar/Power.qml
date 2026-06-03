@@ -12,7 +12,7 @@ Item {
     property var barWindow
 
     readonly property var actions: [
-        { label: "Lock", argv: ["loginctl", "lock-session"] },
+        { label: "Lock", argv: ["qs", "-c", "lock", "ipc", "call", "lock", "lock"] },
         { label: "Logout", dispatch: "hl.dsp.exit()" },
         { label: "Reboot", argv: ["systemctl", "reboot"] },
         { label: "Shutdown", argv: ["systemctl", "poweroff"] }
