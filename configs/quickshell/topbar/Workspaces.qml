@@ -2,35 +2,15 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Effects
+import Quickshell
 import Quickshell.Hyprland
+import "Singletons"
 
 Item {
     id: workspaces
 
     property string screenName: ""
     property real s: 1
-
-    readonly property color verm: "#c0442b"
-    readonly property color vermDeep: "#a3371f"
-    readonly property color vermLit: "#e0563b"
-    readonly property color cream: "#e6d6cb"
-    readonly property color white: "#fff6f0"
-    readonly property color slotBg: "#2c1f19"
-    readonly property color slotBorder: "#3a291f"
-
-    readonly property var iconMap: ({
-        "1": "browser",
-        "2": "terminal",
-        "3": "files",
-        "4": "generic",
-        "5": "spotify",
-        "6": "code",
-        "7": "discord",
-        "8": "generic",
-        "9": "generic",
-        "10": "generic"
-    })
 
     readonly property var range: {
         if (screenName === "DP-1") return [1, 2, 3, 4, 5];
@@ -46,12 +26,21 @@ Item {
         return "";
     }
 
-    function occupied(name) {
-        var ws = Hyprland.workspaces.values;
-        for (var i = 0; i < ws.length; i++)
-            if (ws[i].name === name)
-                return ws[i].toplevels && ws[i].toplevels.values.length > 0;
-        return false;
+    function iconFor(name) {
+        var t = Hyprland.toplevels.values;
+        for (var i = 0; i < t.length; i++) {
+            var w = t[i].workspace;
+            if (!w || w.name !== name)
+                continue;
+            var cls = t[i].lastIpcObject ? t[i].lastIpcObject.class : "";
+            if (!cls)
+                continue;
+            var e = DesktopEntries.heuristicLookup(cls);
+            var ic = e && e.icon ? Quickshell.iconPath(e.icon, true) : "";
+            if (ic)
+                return ic;
+        }
+        return "";
     }
 
     implicitWidth: row.implicitWidth
@@ -72,9 +61,7 @@ Item {
 
                 readonly property string wsName: String(modelData)
                 readonly property bool isActive: workspaces.activeName === wsName
-                readonly property bool isOccupied: workspaces.occupied(wsName)
-                readonly property color tint: isActive ? workspaces.white : workspaces.cream
-                readonly property real iconOpacity: isActive || isOccupied ? 1.0 : 0.32
+                readonly property string iconSource: workspaces.iconFor(wsName)
 
                 Layout.preferredWidth: 23 * workspaces.s
                 Layout.preferredHeight: 23 * workspaces.s
@@ -83,17 +70,18 @@ Item {
                     id: bg
                     anchors.fill: parent
                     radius: 6
-                    color: workspaces.slotBg
+                    color: Theme.slotBg
                     border.width: 1
-                    border.color: workspaces.slotBorder
+                    border.color: Theme.slotBorder
 
                     Rectangle {
                         anchors.fill: parent
                         radius: parent.radius
                         visible: slot.isActive
+                        opacity: 0.55
                         gradient: Gradient {
-                            GradientStop { position: 0.0; color: workspaces.vermLit }
-                            GradientStop { position: 1.0; color: workspaces.vermDeep }
+                            GradientStop { position: 0.0; color: Theme.vermLit }
+                            GradientStop { position: 1.0; color: Theme.vermDeep }
                         }
                     }
 
@@ -107,42 +95,29 @@ Item {
                     }
                 }
 
-                Rectangle {
-                    anchors.fill: parent
-                    radius: 6
-                    visible: slot.isActive
-                    color: workspaces.verm
-                    z: -1
-                    layer.enabled: true
-                    layer.effect: MultiEffect {
-                        shadowEnabled: true
-                        shadowColor: workspaces.verm
-                        shadowBlur: 0.9
-                        shadowVerticalOffset: 0
-                        shadowHorizontalOffset: 0
-                    }
-                }
-
                 Image {
-                    id: glyph
                     anchors.centerIn: parent
-                    width: 14 * workspaces.s
-                    height: 14 * workspaces.s
+                    visible: slot.iconSource !== ""
+                    source: slot.iconSource
                     sourceSize.width: 96
                     sourceSize.height: 96
+                    width: 15 * workspaces.s
+                    height: 15 * workspaces.s
                     fillMode: Image.PreserveAspectFit
                     smooth: true
                     mipmap: true
-                    visible: false
-                    source: Qt.resolvedUrl("assets/icons/" + (workspaces.iconMap[slot.wsName] || "generic") + ".svg")
+                    asynchronous: true
                 }
 
-                MultiEffect {
-                    anchors.fill: glyph
-                    source: glyph
-                    colorization: 1.0
-                    colorizationColor: slot.tint
-                    opacity: slot.iconOpacity
+                Text {
+                    anchors.centerIn: parent
+                    visible: slot.iconSource === ""
+                    text: slot.wsName
+                    color: Theme.cream
+                    opacity: slot.isActive ? 1.0 : 0.4
+                    font.family: Theme.font
+                    font.pixelSize: 11 * workspaces.s
+                    font.weight: Font.DemiBold
                 }
 
                 MouseArea {
