@@ -136,25 +136,21 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: trackArea.bottom
         anchors.topMargin: 9 * root.s
-        width: 17 * root.s
-        height: 17 * root.s
+        width: Math.round(19 * root.s)
+        height: Math.round(19 * root.s)
 
         Image {
-            id: iconImg
             anchors.fill: parent
             source: Qt.resolvedUrl("assets/icons/" + root.icon + ".svg")
-            sourceSize.width: 64
-            sourceSize.height: 64
+            sourceSize.width: Math.round(parent.width)
+            sourceSize.height: Math.round(parent.height)
             fillMode: Image.PreserveAspectFit
             smooth: true
-            mipmap: true
-            visible: false
-        }
-        MultiEffect {
-            anchors.fill: iconImg
-            source: iconImg
-            colorization: 1.0
-            colorizationColor: Theme.iconDim
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                colorization: 1.0
+                colorizationColor: Theme.iconDim
+            }
         }
     }
 }
