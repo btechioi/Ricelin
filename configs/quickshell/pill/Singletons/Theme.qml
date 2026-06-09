@@ -26,6 +26,11 @@ Singleton {
     readonly property color sheen:    Qt.rgba(230/255, 214/255, 203/255, 0.07)
     readonly property color accent16: Qt.rgba(192/255, 68/255, 43/255, 0.16)
     readonly property color accent45: Qt.rgba(224/255, 86/255, 59/255, 0.45)
+    readonly property color vermDim:   "#8a5440"
+    readonly property color vermDimDeep: "#5a3526"
+    readonly property color vermBurn:  "#8a2c14"
+    readonly property color tickRest:  "#cbb6a3"
+    readonly property color threadBg:  Qt.rgba(0.94, 0.88, 0.84, 0.13)
     readonly property color flameCore: "#ffd9c2"
     readonly property color flameGlow: "#ff9a64"
     readonly property color todayWarm: "#ffb38a"

@@ -56,7 +56,7 @@ Item {
             width: 2 * root.s
             height: parent.height
             radius: width / 2
-            color: Qt.rgba(0.94, 0.88, 0.84, 0.13)
+            color: Theme.threadBg
 
             Rectangle {
                 id: fill
@@ -66,24 +66,27 @@ Item {
                 height: parent.height * Math.max(0, Math.min(1, root.value))
                 radius: parent.radius
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: root.lit ? Theme.vermLit : "#8a5440" }
-                    GradientStop { position: 1.0; color: root.lit ? "#8a2c14" : "#5a3526" }
+                    GradientStop { position: 0.0; color: root.lit ? Theme.vermLit : Theme.vermDim }
+                    GradientStop { position: 1.0; color: root.lit ? Theme.vermBurn : Theme.vermDimDeep }
                 }
-                Behavior on height { NumberAnimation { duration: Motion.fast } }
+                Behavior on height { enabled: !dragArea.pressed; NumberAnimation { duration: Motion.fast } }
             }
         }
 
         Rectangle {
             id: tick
             anchors.horizontalCenter: parent.horizontalCenter
-            y: (1 - Math.max(0, Math.min(1, root.value))) * (root.trackH - height)
+            y: Math.max(0, Math.min(root.trackH - height,
+                (1 - Math.max(0, Math.min(1, root.value))) * root.trackH - height / 2))
             width: 11 * root.s
             height: 2.5 * root.s
             radius: 2 * root.s
-            color: root.lit ? Theme.flameCore : "#cbb6a3"
+            color: root.lit ? Theme.flameCore : Theme.tickRest
+            Behavior on y { enabled: !dragArea.pressed; NumberAnimation { duration: Motion.fast } }
         }
 
         MouseArea {
+            id: dragArea
             anchors.fill: parent
             anchors.margins: -10 * root.s
             preventStealing: true
