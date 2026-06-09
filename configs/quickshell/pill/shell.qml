@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import Quickshell.Services.Mpris
 
 /**
  * Washi pill top shell. Each monitor carries two layer-shell windows:
@@ -67,7 +68,10 @@ ShellRoot {
         function calendar(mon: string): void { root.toggleSurface(mon, "calendar"); }
         function launcher(mon: string): void { root.toggleSurface(mon, "launcher"); }
         function power(mon: string): void { root.toggleSurface(mon, "power"); }
-        function media(mon: string): void { root.toggleSurface(mon, "media"); }
+        function media(mon: string): void {
+            if (Mpris.players.values.length > 0)
+                root.toggleSurface(mon, "media");
+        }
         function peek(mon: string): void { root.peek(mon); }
         function hide(): void { root.close(); }
     }
