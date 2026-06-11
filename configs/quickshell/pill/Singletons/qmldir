@@ -3,3 +3,4 @@ singleton Motion Motion.qml
 singleton Flags Flags.qml
 singleton Cava Cava.qml
 singleton Notifs Notifs.qml
+singleton Cliphist Cliphist.qml

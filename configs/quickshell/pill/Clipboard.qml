@@ -1,0 +1,296 @@
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import QtQuick.Controls
+import Quickshell
+import "Singletons"
+
+/**
+ * Clipboard surface: a search field over the cliphist history, rendered as one
+ * of the morphing pill's surfaces. Entries come from the warm Cliphist
+ * singleton snapshot, so the list is populated the moment the pill finishes
+ * morphing. Typing filters by substring, Return copies the selected entry back
+ * to the clipboard and closes, hovering a row cross-fades a dismiss glyph that
+ * deletes the entry (Ctrl+X does the same for the keyboard selection). Image
+ * entries render their cached thumbnail beside the binary descriptor.
+ */
+Item {
+    id: root
+
+    property real s: 1
+    property bool active: false
+
+    property string query: ""
+    property int selectedIndex: 0
+
+    readonly property point caretPoint: {
+        void root.width;
+        void root.height;
+        void field.width;
+        return field.mapToItem(root,
+            field.cursorRectangle.x + field.cursorRectangle.width / 2,
+            field.cursorRectangle.y + field.cursorRectangle.height / 2);
+    }
+    readonly property real caretX: caretPoint.x
+    readonly property real caretY: caretPoint.y
+
+    signal requestClose()
+
+    readonly property var results: {
+        var all = Cliphist.entries;
+        var q = query.trim().toLowerCase();
+        if (!q.length)
+            return all;
+        var out = [];
+        for (var i = 0; i < all.length; i++) {
+            var hay = (all[i].isImage ? all[i].meta : all[i].preview).toLowerCase();
+            if (hay.indexOf(q) !== -1)
+                out.push(all[i]);
+        }
+        return out;
+    }
+
+    function focusField() { field.forceActiveFocus(); }
+
+    function move(delta) {
+        if (results.length === 0)
+            return;
+        selectedIndex = Math.max(0, Math.min(results.length - 1, selectedIndex + delta));
+        list.positionViewAtIndex(selectedIndex, ListView.Contain);
+    }
+
+    function activate() {
+        if (results.length === 0 || selectedIndex < 0 || selectedIndex >= results.length)
+            return;
+        Cliphist.copy(results[selectedIndex]);
+        root.requestClose();
+    }
+
+    function removeAt(index) {
+        if (index < 0 || index >= results.length)
+            return;
+        Cliphist.remove(results[index]);
+    }
+
+    onActiveChanged: {
+        if (active) {
+            query = "";
+            field.text = "";
+            selectedIndex = 0;
+            Cliphist.refresh();
+            Qt.callLater(root.focusField);
+        }
+    }
+    onResultsChanged: if (selectedIndex >= results.length) selectedIndex = Math.max(0, results.length - 1)
+
+    Item {
+        id: search
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 30 * root.s
+
+        Text {
+            id: glyph
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            text: "控"
+            color: Theme.dim
+            font.family: Theme.fontJp
+            font.weight: Font.Medium
+            font.pixelSize: 16 * root.s
+        }
+
+        TextField {
+            id: field
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: glyph.right
+            anchors.leftMargin: 10 * root.s
+            anchors.right: counter.left
+            anchors.rightMargin: 10 * root.s
+            background: null
+            padding: 0
+            color: Theme.cream
+            font.family: Theme.font
+            font.pixelSize: 15 * root.s
+            placeholderText: "Search clipboard"
+            placeholderTextColor: Theme.faint
+            selectByMouse: true
+            selectionColor: Theme.verm
+            onTextChanged: {
+                root.query = text;
+                root.selectedIndex = 0;
+            }
+            cursorDelegate: Item {}
+            Keys.onUpPressed: root.move(-1)
+            Keys.onDownPressed: root.move(1)
+            Keys.onPressed: (e) => {
+                if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+                    root.activate();
+                    e.accepted = true;
+                } else if (e.key === Qt.Key_Escape) {
+                    root.requestClose();
+                    e.accepted = true;
+                } else if (e.key === Qt.Key_X && (e.modifiers & Qt.ControlModifier)) {
+                    root.removeAt(root.selectedIndex);
+                    e.accepted = true;
+                }
+            }
+        }
+
+        Text {
+            id: counter
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: parent.right
+            text: root.results.length + " / " + Cliphist.count
+            color: Theme.faint
+            font.family: Theme.font
+            font.pixelSize: 10.5 * root.s
+            font.features: { "tnum": 1 }
+        }
+    }
+
+    Rectangle {
+        id: divider
+        anchors.top: search.bottom
+        anchors.topMargin: 8 * root.s
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 1
+        color: Theme.hair
+    }
+
+    ListView {
+        id: list
+        anchors.top: divider.bottom
+        anchors.topMargin: 6 * root.s
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        spacing: 2 * root.s
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        model: root.results.length
+
+        delegate: Item {
+            id: row
+            required property int index
+            width: list.width
+            height: (entry && entry.isImage ? 44 : 28) * root.s
+
+            readonly property var entry: root.results[index]
+            readonly property bool selected: index === root.selectedIndex
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 9 * root.s
+                visible: row.selected || rowArea.containsMouse
+                color: row.selected ? Theme.frameBg : Qt.rgba(0.94, 0.88, 0.84, 0.03)
+                border.width: row.selected ? 1 : 0
+                border.color: Theme.frameBorder
+            }
+
+            MouseArea {
+                id: rowArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onEntered: root.selectedIndex = row.index
+                onClicked: {
+                    root.selectedIndex = row.index;
+                    root.activate();
+                }
+            }
+
+            Item {
+                anchors.fill: parent
+                anchors.leftMargin: 11 * root.s
+                anchors.rightMargin: 11 * root.s
+
+                Rectangle {
+                    id: thumbTile
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: row.entry !== undefined && row.entry.isImage
+                    width: visible ? 52 * root.s : 0
+                    height: 32 * root.s
+                    radius: 6 * root.s
+                    color: Theme.tileBg
+                    border.width: 1
+                    border.color: Theme.border
+                    clip: true
+
+                    Image {
+                        anchors.fill: parent
+                        anchors.margins: 1
+                        source: thumbTile.visible ? "file://" + row.entry.thumb : ""
+                        sourceSize.width: 128
+                        sourceSize.height: 128
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        cache: false
+                        smooth: true
+                    }
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: thumbTile.visible ? thumbTile.right : parent.left
+                    anchors.leftMargin: thumbTile.visible ? 9 * root.s : 0
+                    anchors.right: tail.left
+                    anchors.rightMargin: 8 * root.s
+                    text: row.entry === undefined ? "" : (row.entry.isImage ? row.entry.meta : row.entry.preview)
+                    color: row.entry !== undefined && row.entry.isImage
+                        ? (row.selected ? Theme.dim : Theme.faint)
+                        : (row.selected ? Theme.cream : Theme.subtle)
+                    font.family: Theme.font
+                    font.pixelSize: 11.5 * root.s
+                    font.weight: row.selected ? Font.DemiBold : Font.Medium
+                    elide: Text.ElideRight
+                    maximumLineCount: 1
+                    textFormat: Text.PlainText
+                }
+
+                Item {
+                    id: tail
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.max(ret.implicitWidth, dismiss.implicitWidth)
+                    height: Math.max(ret.implicitHeight, dismiss.implicitHeight)
+
+                    Text {
+                        id: ret
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        opacity: row.selected && !rowArea.containsMouse ? 1 : 0
+                        text: "↵"
+                        color: Theme.vermLit
+                        font.family: Theme.font
+                        font.pixelSize: 12 * root.s
+                        Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+                    }
+
+                    Text {
+                        id: dismiss
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        opacity: rowArea.containsMouse ? 1 : 0
+                        text: "✕"
+                        color: dismissArea.containsMouse ? Theme.cream : Theme.dim
+                        font.pixelSize: 10 * root.s
+                        Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+
+                        MouseArea {
+                            id: dismissArea
+                            anchors.fill: parent
+                            anchors.margins: -6 * root.s
+                            enabled: rowArea.containsMouse || containsMouse
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.removeAt(row.index)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

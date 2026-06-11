@@ -35,6 +35,7 @@ Item {
     readonly property bool mixerOpen: surface === "mixer"
     readonly property bool calendarOpen: surface === "calendar"
     readonly property bool launcherOpen: surface === "launcher"
+    readonly property bool clipboardOpen: surface === "clipboard"
     readonly property bool powerOpen: surface === "power"
     readonly property bool mediaOpen: surface === "media"
     readonly property bool linkOpen: surface === "link"
@@ -56,6 +57,8 @@ Item {
     readonly property real calendarH: calendar.implicitHeight + 32 * s
     readonly property real launcherW: 360 * s
     readonly property real launcherH: 332 * s
+    readonly property real clipboardW: 360 * s
+    readonly property real clipboardH: 332 * s
     readonly property real powerW: 330 * s
     readonly property real powerH: 150 * s
     readonly property real mediaW: 336 * s
@@ -66,13 +69,14 @@ Item {
 
     readonly property string mode: calendarOpen ? "calendar"
         : (launcherOpen ? "launcher"
+        : (clipboardOpen ? "clipboard"
         : (powerOpen ? "power"
         : (mediaOpen ? "media"
         : (mixerOpen ? "mixer"
         : (linkOpen ? "link"
         : (osdActive && !held ? "osd"
         : (toastActive && !held ? "toast"
-        : (expanded ? "hover" : "rest"))))))))
+        : (expanded ? "hover" : "rest")))))))))
 
     signal requestSurface(string name)
     signal requestClose()
@@ -118,10 +122,11 @@ Item {
         precision: SystemClock.Minutes
     }
 
-    property real morphRadius: (mixerOpen || calendarOpen || launcherOpen || powerOpen || mediaOpen || linkOpen || mode === "toast" || mode === "osd") ? openCorner : restCorner
+    property real morphRadius: (mixerOpen || calendarOpen || launcherOpen || clipboardOpen || powerOpen || mediaOpen || linkOpen || mode === "toast" || mode === "osd") ? openCorner : restCorner
 
     width: mode === "calendar" ? calendarW
         : mode === "launcher" ? launcherW
+        : mode === "clipboard" ? clipboardW
         : mode === "power" ? powerW
         : mode === "media" ? mediaW
         : mode === "mixer" ? mixerW
@@ -132,6 +137,7 @@ Item {
         : Math.max(restW, restRow.implicitWidth + 36 * s)
     height: mode === "calendar" ? calendarH
         : mode === "launcher" ? launcherH
+        : mode === "clipboard" ? clipboardH
         : mode === "power" ? powerH
         : mode === "media" ? mediaH
         : mode === "mixer" ? mixerH
@@ -181,7 +187,7 @@ Item {
         s: pill.s
         heat: pill.powerOpen ? power.holdProgress : 0
         form: pill.mediaOpen ? "seam"
-            : (pill.launcherOpen ? "caret"
+            : (pill.launcherOpen || pill.clipboardOpen ? "caret"
             : (pill.calendarOpen ? (calendar.todayVisible ? "ring" : "dock")
             : (pill.mixerOpen || pill.powerOpen || pill.linkOpen ? "dock"
             : (pill.mode === "toast" || pill.mode === "osd" ? "off"
@@ -190,6 +196,8 @@ Item {
             ? Qt.point(media.x + media.seamHeadX, media.y + media.seamHeadY)
             : (pill.launcherOpen
             ? Qt.point(launcher.x + launcher.caretX, launcher.y + launcher.caretY)
+            : (pill.clipboardOpen
+            ? Qt.point(clip.x + clip.caretX, clip.y + clip.caretY)
             : (pill.calendarOpen
             ? (calendar.todayVisible
                 ? Qt.point(calendar.x + calendar.todayX, calendar.y + calendar.todayY)
@@ -200,7 +208,7 @@ Item {
             ? Qt.point(power.x + power.heatX, power.y + power.heatY)
             : (pill.linkOpen
             ? Qt.point(link.x + link.emberX, link.y + link.emberY)
-            : Qt.point(pill.width - 14 * pill.s, pill.height / 2))))))
+            : Qt.point(pill.width - 14 * pill.s, pill.height / 2)))))))
     }
 
     HoverHandler {
@@ -541,6 +549,24 @@ Item {
         active: pill.launcherOpen
         enabled: pill.launcherOpen
         opacity: pill.launcherOpen ? 1 : 0
+        visible: opacity > 0.01
+        Behavior on opacity {
+            NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard }
+        }
+        onRequestClose: pill.requestClose()
+    }
+
+    Clipboard {
+        id: clip
+        anchors.fill: parent
+        anchors.topMargin: 15 * pill.s
+        anchors.leftMargin: 17 * pill.s
+        anchors.rightMargin: 17 * pill.s
+        anchors.bottomMargin: 14 * pill.s
+        s: pill.s
+        active: pill.clipboardOpen
+        enabled: pill.clipboardOpen
+        opacity: pill.clipboardOpen ? 1 : 0
         visible: opacity > 0.01
         Behavior on opacity {
             NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard }

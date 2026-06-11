@@ -107,6 +107,7 @@ ShellRoot {
         function launcher(mon: string): void { root.toggleSurface(mon, "launcher"); }
         function power(mon: string): void { root.toggleSurface(mon, "power"); }
         function link(mon: string): void { root.toggleSurface(mon, "link"); }
+        function clipboard(mon: string): void { root.toggleSurface(mon, "clipboard"); }
         function media(mon: string): void {
             if (Mpris.players.values.length > 0)
                 root.toggleSurface(mon, "media");
