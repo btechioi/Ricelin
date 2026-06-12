@@ -64,8 +64,8 @@ Item {
     readonly property real wallpaperH: 146 * s
     readonly property real powerW: 330 * s
     readonly property real powerH: 150 * s
-    readonly property real mediaW: 336 * s
-    readonly property real mediaH: 122 * s
+    readonly property real mediaW: 390 * s
+    readonly property real mediaH: 150 * s
     readonly property real toastW: 342 * s
     readonly property real restCorner: 18 * s
     readonly property real openCorner: 22 * s
@@ -813,7 +813,6 @@ Item {
     Media {
         id: media
         anchors.fill: parent
-        anchors.margins: 15 * pill.s
         s: pill.s
         active: pill.mediaOpen
         enabled: pill.mediaOpen

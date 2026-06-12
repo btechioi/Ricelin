@@ -7,12 +7,15 @@ import Quickshell.Services.Mpris
 import "Singletons"
 
 /**
- * Media surface: a compact warm-lacquer now-playing card. A small shadowed album
- * cover sits beside a single-line title and artist, with stroked transport
- * controls and a ringed play/pause button. A hairline seam beneath traces
- * playback; its played edge is the dock point for the pill's living flame, which
- * crawls along the seam as the song advances. Driven by the active MPRIS player;
- * the pill body shows through as the warm background.
+ * Media surface — a sumi-e now-playing card. The album art bleeds edge-to-edge
+ * on the left and is brushed into the lacquer by a horizontal fade; the same
+ * art, blurred far past recognition, glows through a near-opaque warm wash
+ * behind the whole card. Beside the cover sit title and artist, a dim
+ * service · time line, and a vermilion hanko seal (奏 playing / 休 paused)
+ * flanked by 前 / 次 skips. Playback is traced by a brush stroke along the
+ * bottom: a dry full-width base stroke and a thicker painted stroke whose live
+ * head is the dock point for the pill's soul bead. Driven by the active MPRIS
+ * player.
  */
 Item {
     id: root
@@ -38,7 +41,6 @@ Item {
         return controllable ? controllable : list[0];
     }
 
-
     readonly property bool hasPlayer: player !== null
     readonly property bool playing: hasPlayer && player.isPlaying
     readonly property string title: hasPlayer && player.trackTitle ? player.trackTitle : "Nothing playing"
@@ -49,8 +51,15 @@ Item {
             return player.trackArtists.join(", ");
         return player.trackArtist ? player.trackArtist : "";
     }
+    readonly property string playerService: {
+        if (!hasPlayer)
+            return "";
+        var n = player.identity ? player.identity : (player.desktopEntry ? player.desktopEntry : "");
+        return n.toLowerCase();
+    }
     readonly property string artUrl: hasPlayer && player.trackArtUrl ? player.trackArtUrl : ""
-    readonly property bool hasArt: cover.status === Image.Ready && artUrl !== ""
+    readonly property bool hasArt: artUrl !== ""
+        && (coverPair.front.status === Image.Ready || coverPair.back.status === Image.Ready)
     readonly property real lengthSec: hasPlayer && player.length > 0 ? player.length : 0
     readonly property real positionSec: hasPlayer ? player.position : 0
     readonly property real playFrac: lengthSec > 0 ? Math.max(0, Math.min(1, positionSec / lengthSec)) : 0
@@ -58,13 +67,23 @@ Item {
     property bool dragging: false
     readonly property real frac: dragging ? dragFrac : playFrac
 
+    readonly property real textX: 134 * s
+    readonly property real edgePad: 18 * s
+    readonly property color washMid: mix(Theme.cardTop, Theme.cardBot, 0.5)
+    property real sealPulse: 0
+
+    /**
+     * Dock point of the soul bead: the live head of the painted stroke. The
+     * voided reads keep the mapping re-evaluating across morph resizes even
+     * though mapToItem itself is not reactive.
+     */
     readonly property point seamHead: {
         void root.width;
         void root.height;
         void root.frac;
-        void seam.x;
-        void seam.width;
-        return seamFill.mapToItem(root, seamFill.width, seamFill.height / 2);
+        void stroke.x;
+        void stroke.width;
+        return stroke.mapToItem(root, stroke.headX, stroke.headY);
     }
     readonly property real seamHeadX: seamHead.x
     readonly property real seamHeadY: seamHead.y
@@ -78,6 +97,14 @@ Item {
         return m + ":" + (ss < 10 ? "0" + ss : ss);
     }
 
+    function mix(a, b, t) {
+        return Qt.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, 1);
+    }
+
+    onArtUrlChanged: coverPair.load(artUrl)
+    onTitleChanged: if (playing && active) pulseAnim.restart()
+    Component.onCompleted: coverPair.load(artUrl)
+
     Timer {
         interval: 500
         running: root.active && root.playing
@@ -85,30 +112,39 @@ Item {
         onTriggered: if (root.player) root.player.positionChanged();
     }
 
-    component SkipButton: Item {
+    SequentialAnimation {
+        id: pulseAnim
+        NumberAnimation { target: root; property: "sealPulse"; to: 1; duration: Motion.fast; easing.type: Motion.easeStandard }
+        NumberAnimation { target: root; property: "sealPulse"; to: 0; duration: Motion.standard; easing.type: Motion.easeStandard }
+    }
+
+    NumberAnimation {
+        id: coverFade
+        property: "opacity"
+        to: 1
+        duration: Motion.standard
+        easing.type: Easing.OutCubic
+        onFinished: coverPair.settle()
+    }
+
+    component KanjiSkip: Text {
         id: skip
 
-        property string glyph: ""
         property bool can: false
         signal activated()
 
-        width: 17 * root.s
-        height: 17 * root.s
         anchors.verticalCenter: parent.verticalCenter
-        opacity: skipArea.enabled ? (skipArea.containsMouse ? 1 : 0.75) : 0.4
-        Behavior on opacity { NumberAnimation { duration: 120 } }
-
-        GlyphIcon {
-            anchors.fill: parent
-            name: skip.glyph
-            stroke: 1.8
-            color: Theme.cream
-        }
+        font.family: Theme.fontJp
+        font.pixelSize: 13 * root.s
+        color: skipArea.containsMouse ? Theme.cream : Theme.dim
+        opacity: skip.can ? 1 : 0.4
+        Behavior on color { ColorAnimation { duration: Motion.fast } }
+        Behavior on opacity { NumberAnimation { duration: Motion.fast } }
 
         MouseArea {
             id: skipArea
             anchors.fill: parent
-            anchors.margins: -7 * root.s
+            anchors.margins: -6 * root.s
             hoverEnabled: true
             enabled: skip.can
             cursorShape: Qt.PointingHandCursor
@@ -117,71 +153,149 @@ Item {
     }
 
     ClippingRectangle {
-        id: coverBox
-        anchors.left: parent.left
-        anchors.top: parent.top
-        width: 50 * root.s
-        height: 50 * root.s
-        radius: Motion.rTile * root.s
-        color: Theme.tileBg
+        anchors.fill: parent
+        radius: 22 * root.s
+        color: "transparent"
 
         Image {
-            id: cover
+            id: bleedSrc
             anchors.fill: parent
             source: root.artUrl
-            sourceSize: Qt.size(Math.ceil(coverBox.width * 2), Math.ceil(coverBox.height * 2))
+            sourceSize: Qt.size(128, 128)
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             cache: true
-            visible: root.hasArt
+            visible: false
         }
-        GlyphIcon {
-            anchors.centerIn: parent
-            width: parent.width * 0.4
-            height: width
-            name: "music"
-            color: Theme.subtle
-            visible: !root.hasArt
-        }
-    }
 
-    Rectangle {
-        anchors.fill: coverBox
-        radius: coverBox.radius
-        color: "transparent"
-        z: -1
-        layer.enabled: true
-        layer.effect: MultiEffect {
-            shadowEnabled: true
-            shadowColor: Qt.rgba(0, 0, 0, Theme.shadowOpacity)
-            shadowBlur: 0.6
-            shadowVerticalOffset: 3 * root.s
+        MultiEffect {
+            anchors.fill: parent
+            source: bleedSrc
+            scale: 1.12
+            visible: root.active && root.artUrl !== "" && bleedSrc.status === Image.Ready
+            blurEnabled: true
+            blur: 0.95
+            blurMax: 64
         }
-    }
 
-    Item {
-        id: textBlock
-        anchors.left: coverBox.right
-        anchors.leftMargin: 14 * root.s
-        anchors.right: controls.left
-        anchors.rightMargin: 12 * root.s
-        anchors.top: coverBox.top
-        anchors.bottom: coverBox.bottom
+        Rectangle {
+            anchors.fill: parent
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: Qt.alpha(Theme.cardTop, 0.88) }
+                GradientStop { position: 1.0; color: Qt.alpha(Theme.cardBot, 0.93) }
+            }
+        }
+
+        Item {
+            id: coverPair
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: 118 * root.s
+            clip: true
+
+            property var front: coverA
+            property var back: coverB
+
+            /** Stage `url` on the hidden back image; reveal() runs once it decodes. */
+            function load(url) {
+                coverFade.stop();
+                back.opacity = 0;
+                if (!url) {
+                    front.source = "";
+                    back.source = "";
+                    return;
+                }
+                if (String(front.source) === url) {
+                    back.source = "";
+                    return;
+                }
+                back.source = url;
+            }
+
+            function reveal() {
+                coverFade.target = back;
+                coverFade.restart();
+            }
+
+            function settle() {
+                const old = front;
+                front = back;
+                back = old;
+                old.source = "";
+                old.opacity = 0;
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                color: Theme.tileBg
+                visible: !root.hasArt
+            }
+
+            Image {
+                id: coverA
+                anchors.fill: parent
+                z: coverPair.back === this ? 1 : 0
+                sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+                cache: true
+                onStatusChanged: if (status === Image.Ready && coverPair.back === this) coverPair.reveal()
+            }
+
+            Image {
+                id: coverB
+                anchors.fill: parent
+                z: coverPair.back === this ? 1 : 0
+                opacity: 0
+                sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+                cache: true
+                onStatusChanged: if (status === Image.Ready && coverPair.back === this) coverPair.reveal()
+            }
+
+            GlyphIcon {
+                z: 2
+                anchors.centerIn: parent
+                width: 40 * root.s
+                height: width
+                name: "music"
+                color: Theme.subtle
+                visible: !root.hasArt
+            }
+        }
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.leftMargin: 62 * root.s
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: 56 * root.s
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: Qt.alpha(root.washMid, 0) }
+                GradientStop { position: 0.7; color: Qt.alpha(root.washMid, 0.8) }
+                GradientStop { position: 1.0; color: root.washMid }
+            }
+        }
 
         Column {
-            anchors.verticalCenter: parent.verticalCenter
             anchors.left: parent.left
+            anchors.leftMargin: root.textX
             anchors.right: parent.right
+            anchors.rightMargin: root.edgePad
+            anchors.top: parent.top
+            anchors.topMargin: 24 * root.s
             spacing: 3 * root.s
 
             Marquee {
-                id: titleText
                 anchors.left: parent.left
                 anchors.right: parent.right
                 text: root.title
                 color: Theme.cream
-                pixelSize: 14.5 * root.s
-                weight: Font.Bold
+                pixelSize: 17 * root.s
+                weight: Font.DemiBold
                 active: root.active
             }
             Marquee {
@@ -189,124 +303,168 @@ Item {
                 anchors.right: parent.right
                 text: root.artist
                 color: Theme.dim
-                pixelSize: 11 * root.s
+                pixelSize: 11.5 * root.s
                 active: root.active
                 visible: text.length > 0
             }
         }
-    }
-
-    Row {
-        id: controls
-        anchors.right: parent.right
-        anchors.verticalCenter: coverBox.verticalCenter
-        spacing: 12 * root.s
-
-        SkipButton {
-            glyph: "prev-s"
-            can: root.hasPlayer && root.player.canGoPrevious
-            onActivated: if (root.player) root.player.previous()
-        }
-
-        Item {
-            width: 31 * root.s
-            height: 31 * root.s
-            anchors.verticalCenter: parent.verticalCenter
-            opacity: ppArea.enabled ? (ppArea.containsMouse ? 1 : 0.75) : 0.4
-            Behavior on opacity { NumberAnimation { duration: 120 } }
-
-            Rectangle {
-                anchors.fill: parent
-                radius: width / 2
-                color: "transparent"
-                border.width: 1.5 * root.s
-                border.color: Qt.alpha(Theme.vermLit, 0.8)
-
-                GlyphIcon {
-                    anchors.centerIn: parent
-                    anchors.horizontalCenterOffset: root.playing ? 0 : 1 * root.s
-                    width: 13 * root.s
-                    height: width
-                    name: root.playing ? "pause-s" : "play-s"
-                    stroke: 1.7
-                    color: Theme.vermLit
-                }
-            }
-            MouseArea {
-                id: ppArea
-                anchors.fill: parent
-                hoverEnabled: true
-                enabled: root.hasPlayer && root.player.canTogglePlaying
-                cursorShape: Qt.PointingHandCursor
-                onClicked: if (root.player) root.player.togglePlaying();
-            }
-        }
-
-        SkipButton {
-            glyph: "next-s"
-            can: root.hasPlayer && root.player.canGoNext
-            onActivated: if (root.player) root.player.next()
-        }
-    }
-
-    Item {
-        id: progress
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        height: 12 * root.s
 
         Text {
-            id: tcur
             anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            text: root.fmt(root.dragging ? root.dragFrac * root.lengthSec : root.positionSec)
-            color: Theme.faint
+            anchors.leftMargin: root.textX
+            anchors.right: transport.left
+            anchors.rightMargin: 10 * root.s
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 44 * root.s
+            elide: Text.ElideRight
+            text: {
+                const head = root.playerService.length > 0 ? root.playerService + " · " : "";
+                const cur = root.fmt(root.dragging ? root.dragFrac * root.lengthSec : root.positionSec);
+                return head + cur + " · " + root.fmt(root.lengthSec);
+            }
+            color: Theme.dim
             font.family: Theme.font
             font.pixelSize: 9.5 * root.s
             font.features: { "tnum": 1 }
         }
-        Text {
-            id: ttot
+
+        Row {
+            id: transport
             anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            text: root.fmt(root.lengthSec)
-            color: Theme.faint
-            font.family: Theme.font
-            font.pixelSize: 9.5 * root.s
-            font.features: { "tnum": 1 }
-        }
-        Rectangle {
-            id: seam
-            anchors.left: tcur.right
-            anchors.leftMargin: 11 * root.s
-            anchors.right: ttot.left
-            anchors.rightMargin: 11 * root.s
-            anchors.verticalCenter: parent.verticalCenter
-            height: 1.5 * root.s
-            color: Theme.threadBg
+            anchors.rightMargin: root.edgePad
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 38 * root.s
+            spacing: 14 * root.s
+
+            KanjiSkip {
+                text: "前"
+                can: root.hasPlayer && root.player.canGoPrevious
+                onActivated: if (root.player) root.player.previous()
+            }
 
             Rectangle {
-                id: seamFill
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
+                id: seal
+                anchors.verticalCenter: parent.verticalCenter
+                width: 30 * root.s
+                height: 30 * root.s
+                radius: 7 * root.s
+                rotation: -1.5
+                scale: 1 + 0.08 * root.sealPulse
 
-                property real targetW: parent.width * root.frac
-                property real lastFrac: 0
+                /** 1 while playing, eased to 0 when paused — drives the ink desaturation. */
+                property real sat: root.playing ? 1 : 0
+                Behavior on sat { NumberAnimation { duration: Motion.fast; easing.type: Motion.easeStandard } }
 
-                width: targetW
+                opacity: (sealArea.enabled ? 1 : 0.4) * (0.75 + 0.25 * sat)
+                Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+
+                border.width: 1
+                border.color: Qt.alpha(Theme.vermLit, 0.4 + 0.4 * root.sealPulse)
                 gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0.0; color: Qt.alpha(Theme.verm, 0.4) }
-                    GradientStop { position: 1.0; color: Theme.vermLit }
+                    GradientStop { position: 0.0; color: root.mix(Theme.verm, Theme.tileBg, 0.55 * (1 - seal.sat)) }
+                    GradientStop { position: 1.0; color: root.mix(Theme.vermDeep, Theme.tileBg, 0.55 * (1 - seal.sat)) }
                 }
 
-                Behavior on width {
-                    enabled: Math.abs(root.frac - seamFill.lastFrac) < 0.02
-                    NumberAnimation { duration: 500; easing.type: Easing.Linear }
+                Text {
+                    anchors.centerIn: parent
+                    text: root.playing ? "奏" : "休"
+                    color: Theme.bright
+                    font.family: Theme.fontJp
+                    font.pixelSize: 16 * root.s
+                    font.weight: Font.DemiBold
                 }
-                onTargetWChanged: Qt.callLater(() => { seamFill.lastFrac = root.frac; })
+
+                MouseArea {
+                    id: sealArea
+                    anchors.fill: parent
+                    anchors.margins: -4 * root.s
+                    hoverEnabled: true
+                    enabled: root.hasPlayer && root.player.canTogglePlaying
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: if (root.player) root.player.togglePlaying()
+                }
+            }
+
+            KanjiSkip {
+                text: "次"
+                can: root.hasPlayer && root.player.canGoNext
+                onActivated: if (root.player) root.player.next()
+            }
+        }
+
+        Canvas {
+            id: stroke
+            anchors.left: parent.left
+            anchors.leftMargin: root.textX
+            anchors.right: parent.right
+            anchors.rightMargin: root.edgePad
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 10 * root.s
+            height: 18 * root.s
+
+            readonly property real inset: 3 * root.s
+            readonly property real usable: Math.max(1, width - 2 * inset)
+            property real targetF: root.frac
+            property real lastFrac: 0
+            property real drawF: targetF
+            readonly property real headX: inset + drawF * usable
+            readonly property real headY: waveY(drawF)
+
+            /**
+             * Smooth half-second chase between position ticks, same contract as
+             * the old seamFill width Behavior: enabled only for small advances
+             * so seeks and track changes snap instead of gliding.
+             */
+            Behavior on drawF {
+                enabled: Math.abs(root.frac - stroke.lastFrac) < 0.02
+                NumberAnimation { duration: 500; easing.type: Easing.Linear }
+            }
+            onTargetFChanged: Qt.callLater(() => { stroke.lastFrac = root.frac; })
+
+            onDrawFChanged: requestPaint()
+            onWidthChanged: requestPaint()
+            onVisibleChanged: if (visible) requestPaint()
+
+            /** Organic spine waver: pronounced near the tail, settling flat toward the end. */
+            function waveY(u) {
+                return height / 2 - 2.6 * Math.sin(3 * Math.PI * u) * Math.exp(-2.5 * u) * root.s;
+            }
+
+            onPaint: {
+                const ctx = getContext("2d");
+                ctx.reset();
+                if (width <= 0 || height <= 0)
+                    return;
+                const n = 48;
+                ctx.strokeStyle = Theme.border;
+                ctx.lineWidth = 2.5 * root.s;
+                ctx.lineCap = "round";
+                ctx.lineJoin = "round";
+                ctx.beginPath();
+                ctx.moveTo(inset, waveY(0));
+                for (let i = 1; i <= n; i++)
+                    ctx.lineTo(inset + (i / n) * usable, waveY(i / n));
+                ctx.stroke();
+
+                if (drawF <= 0.002)
+                    return;
+                const hTail = 2.5 * root.s;
+                const hHead = 1.75 * root.s;
+                const m = Math.max(2, Math.ceil(n * drawF));
+                ctx.fillStyle = Theme.verm;
+                ctx.beginPath();
+                ctx.arc(inset, waveY(0), hTail, Math.PI / 2, 3 * Math.PI / 2);
+                for (let i = 0; i <= m; i++) {
+                    const u = (i / m) * drawF;
+                    ctx.lineTo(inset + u * usable, waveY(u) - (hTail + (hHead - hTail) * (i / m)));
+                }
+                ctx.arc(headX, headY, hHead, -Math.PI / 2, Math.PI / 2);
+                for (let i = m; i >= 0; i--) {
+                    const u = (i / m) * drawF;
+                    ctx.lineTo(inset + u * usable, waveY(u) + (hTail + (hHead - hTail) * (i / m)));
+                }
+                ctx.closePath();
+                ctx.fill();
             }
 
             Timer {
@@ -323,7 +481,7 @@ Item {
                 enabled: root.hasPlayer && root.player.canSeek && root.lengthSec > 0
                 cursorShape: Qt.PointingHandCursor
                 function fracAt(mx) {
-                    return Math.max(0, Math.min(1, (mx - 8 * root.s) / seam.width));
+                    return Math.max(0, Math.min(1, (mx - 8 * root.s - stroke.inset) / stroke.usable));
                 }
                 function commit() {
                     if (root.player)
