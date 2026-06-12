@@ -1,6 +1,7 @@
 #!/bin/sh
 cache="${XDG_CACHE_HOME:-$HOME/.cache}/cliphist-thumbs"
 mkdir -p "$cache"
+chmod 700 "$cache"
 
 tab=$(printf '\t')
 snapshot=$(cliphist list)

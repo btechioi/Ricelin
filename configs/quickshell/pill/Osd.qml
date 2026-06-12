@@ -42,7 +42,7 @@ Item {
         var t = player.trackTitle ? player.trackTitle : "";
         var a = "";
         if (player.trackArtists && player.trackArtists.length > 0)
-            a = String(player.trackArtists);
+            a = player.trackArtists.join(", ");
         else if (player.trackArtist)
             a = player.trackArtist;
         return a.length > 0 ? t + " — " + a : t;

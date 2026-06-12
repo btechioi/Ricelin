@@ -46,7 +46,7 @@ Item {
         if (!hasPlayer)
             return "";
         if (player.trackArtists && player.trackArtists.length > 0)
-            return player.trackArtists;
+            return player.trackArtists.join(", ");
         return player.trackArtist ? player.trackArtist : "";
     }
     readonly property string artUrl: hasPlayer && player.trackArtUrl ? player.trackArtUrl : ""
@@ -99,6 +99,7 @@ Item {
             id: cover
             anchors.fill: parent
             source: root.artUrl
+            sourceSize: Qt.size(Math.ceil(coverBox.width * 2), Math.ceil(coverBox.height * 2))
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             cache: true
@@ -326,15 +327,11 @@ Item {
                 enabled: root.hasPlayer && root.player.canSeek && root.lengthSec > 0
                 cursorShape: Qt.PointingHandCursor
                 function fracAt(mx) {
-                    return Math.max(0, Math.min(1, (mx + 8 * root.s) / seam.width));
+                    return Math.max(0, Math.min(1, (mx - 8 * root.s) / seam.width));
                 }
                 function commit() {
                     if (root.player)
                         root.player.position = root.dragFrac * root.lengthSec;
-                }
-                onClicked: (e) => {
-                    root.dragFrac = fracAt(e.x);
-                    commit();
                 }
                 onPressed: (e) => {
                     root.dragFrac = fracAt(e.x);
