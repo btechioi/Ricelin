@@ -145,31 +145,34 @@ Item {
         precision: SystemClock.Minutes
     }
 
-    property real morphRadius: (mixerOpen || calendarOpen || launcherOpen || clipboardOpen || wallpaperOpen || powerOpen || mediaOpen || linkOpen || mode === "toast" || mode === "osd") ? openCorner : restCorner
+    property real morphRadius: (mode === "rest" || mode === "hover") ? restCorner : openCorner
 
-    readonly property real targetW: mode === "calendar" ? calendarW
-        : mode === "launcher" ? launcherW
-        : mode === "clipboard" ? clipboardW
-        : mode === "wallpaper" ? wallpaperW
-        : mode === "power" ? powerW
-        : mode === "media" ? mediaW
-        : mode === "mixer" ? mixerW
-        : mode === "link" ? link.desiredW
-        : mode === "osd" ? osd.desiredW
-        : mode === "toast" ? toastW
-        : mode === "hover" ? hoverW
-        : Math.max(restW, restRow.implicitWidth + 36 * s)
-    readonly property real targetH: mode === "calendar" ? calendarH
-        : mode === "launcher" ? launcherH
-        : mode === "clipboard" ? clipboardH
-        : mode === "wallpaper" ? wallpaperH
-        : mode === "power" ? powerH
-        : mode === "media" ? mediaH
-        : mode === "mixer" ? mixerH
-        : mode === "link" ? link.implicitHeight + 26 * s
-        : mode === "osd" ? osd.desiredH
-        : mode === "toast" ? (toastLoader.item ? toastLoader.item.implicitHeight + 24 * s : restH)
-        : mode === "hover" ? hoverH : restH
+    /**
+     * Target geometry per mode, one entry per surface. The thunks are invoked
+     * inside the targetSize binding, so every property they read still
+     * registers as a live dependency. Adding a surface means one line here
+     * instead of touching parallel ternary ladders.
+     */
+    readonly property var surfaceSize: ({
+        calendar:  () => Qt.size(calendarW, calendarH),
+        launcher:  () => Qt.size(launcherW, launcherH),
+        clipboard: () => Qt.size(clipboardW, clipboardH),
+        wallpaper: () => Qt.size(wallpaperW, wallpaperH),
+        power:     () => Qt.size(powerW, powerH),
+        media:     () => Qt.size(mediaW, mediaH),
+        mixer:     () => Qt.size(mixerW, mixerH),
+        link:      () => Qt.size(link.desiredW, link.implicitHeight + 26 * s),
+        osd:       () => Qt.size(osd.desiredW, osd.desiredH),
+        toast:     () => Qt.size(toastW, toastLoader.item ? toastLoader.item.implicitHeight + 24 * s : restH),
+        hover:     () => Qt.size(hoverW, hoverH)
+    })
+
+    readonly property size targetSize: {
+        const f = surfaceSize[mode];
+        return f ? f() : Qt.size(Math.max(restW, restRow.implicitWidth + 36 * s), restH);
+    }
+    readonly property real targetW: targetSize.width
+    readonly property real targetH: targetSize.height
 
     width: targetW
     height: targetH
@@ -285,7 +288,13 @@ Item {
             GradientStop { position: 1.0; color: Theme.cardBot }
         }
 
-        layer.enabled: true
+        /**
+         * The shadow layer re-allocates its FBO every frame while the body
+         * resizes, so it pauses during big morphs (closeness ≤ 0.6) and snaps
+         * back near arrival. The 0.6 floor keeps small in-state jiggle (dot
+         * growth, tray churn) from flickering the shadow.
+         */
+        layer.enabled: pill.morphCloseness > 0.6
         layer.effect: MultiEffect {
             shadowEnabled: true
             shadowColor: Qt.rgba(0, 0, 0, Theme.shadowOpacity)
@@ -414,12 +423,20 @@ Item {
         onTapped: pill.pinned = !pill.pinned
     }
 
+    /**
+     * Content opacities split into a discrete gate (mode flips, smoothed by a
+     * Behavior) multiplied by the per-frame morphCloseness term. Putting the
+     * Behavior on the combined value restarted its animation every morph
+     * frame; closeness is already smooth and needs no easing of its own.
+     */
     Item {
         id: rest
         anchors.fill: parent
-        opacity: (pill.expanded || pill.mode === "toast" || pill.mode === "osd") ? 0 : Math.pow(pill.morphCloseness, 1.5)
+        readonly property real gate: pill.mode === "rest" ? 1 : 0
+        property real gateSmooth: gate
+        Behavior on gateSmooth { NumberAnimation { duration: pill.mode === "rest" ? Motion.fast : 260 } }
+        opacity: gateSmooth * Math.pow(pill.morphCloseness, 1.5)
         visible: opacity > 0.01
-        Behavior on opacity { NumberAnimation { duration: pill.mode === "rest" ? Motion.fast : 260 } }
 
         Row {
             id: restRow
@@ -465,9 +482,11 @@ Item {
     Item {
         id: hover
         anchors.fill: parent
-        opacity: pill.mode === "hover" ? Math.pow(pill.morphCloseness, 1.2) : 0
+        readonly property real gate: pill.mode === "hover" ? 1 : 0
+        property real gateSmooth: gate
+        Behavior on gateSmooth { NumberAnimation { duration: pill.mode === "hover" ? Motion.fast : 40 } }
+        opacity: gateSmooth * Math.pow(pill.morphCloseness, 1.2)
         visible: true
-        Behavior on opacity { NumberAnimation { duration: pill.mode === "hover" ? Motion.fast : 40 } }
 
         readonly property bool live: pill.mode === "hover"
 
@@ -715,11 +734,13 @@ Item {
         s: pill.s
         active: pill.mixerOpen
         enabled: pill.mixerOpen
-        opacity: pill.mixerOpen ? Math.pow(pill.morphCloseness, 1.3) : 0
-        visible: opacity > 0.01
-        Behavior on opacity {
+        readonly property real gate: pill.mixerOpen ? 1 : 0
+        property real gateSmooth: gate
+        Behavior on gateSmooth {
             NumberAnimation { duration: Motion.standard; easing.type: Easing.OutCubic }
         }
+        opacity: gateSmooth * Math.pow(pill.morphCloseness, 1.3)
+        visible: opacity > 0.01
     }
 
     Calendar {
@@ -732,11 +753,13 @@ Item {
         s: pill.s
         active: pill.calendarOpen
         enabled: pill.calendarOpen
-        opacity: pill.calendarOpen ? Math.pow(pill.morphCloseness, 1.3) : 0
-        visible: opacity > 0.01
-        Behavior on opacity {
+        readonly property real gate: pill.calendarOpen ? 1 : 0
+        property real gateSmooth: gate
+        Behavior on gateSmooth {
             NumberAnimation { duration: Motion.standard; easing.type: Easing.OutCubic }
         }
+        opacity: gateSmooth * Math.pow(pill.morphCloseness, 1.3)
+        visible: opacity > 0.01
     }
 
     Launcher {
@@ -749,11 +772,13 @@ Item {
         s: pill.s
         active: pill.launcherOpen
         enabled: pill.launcherOpen
-        opacity: pill.launcherOpen ? Math.pow(pill.morphCloseness, 1.3) : 0
-        visible: opacity > 0.01
-        Behavior on opacity {
+        readonly property real gate: pill.launcherOpen ? 1 : 0
+        property real gateSmooth: gate
+        Behavior on gateSmooth {
             NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard }
         }
+        opacity: gateSmooth * Math.pow(pill.morphCloseness, 1.3)
+        visible: opacity > 0.01
         onRequestClose: pill.requestClose()
     }
 
@@ -767,11 +792,13 @@ Item {
         s: pill.s
         active: pill.clipboardOpen
         enabled: pill.clipboardOpen
-        opacity: pill.clipboardOpen ? Math.pow(pill.morphCloseness, 1.3) : 0
-        visible: opacity > 0.01
-        Behavior on opacity {
+        readonly property real gate: pill.clipboardOpen ? 1 : 0
+        property real gateSmooth: gate
+        Behavior on gateSmooth {
             NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard }
         }
+        opacity: gateSmooth * Math.pow(pill.morphCloseness, 1.3)
+        visible: opacity > 0.01
         onRequestClose: pill.requestClose()
     }
 
@@ -781,11 +808,13 @@ Item {
         s: pill.s
         active: pill.wallpaperOpen
         enabled: pill.wallpaperOpen
-        opacity: pill.wallpaperOpen ? Math.pow(pill.morphCloseness, 1.3) : 0
-        visible: opacity > 0.01
-        Behavior on opacity {
+        readonly property real gate: pill.wallpaperOpen ? 1 : 0
+        property real gateSmooth: gate
+        Behavior on gateSmooth {
             NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard }
         }
+        opacity: gateSmooth * Math.pow(pill.morphCloseness, 1.3)
+        visible: opacity > 0.01
         onRequestClose: pill.requestClose()
     }
 
@@ -799,11 +828,13 @@ Item {
         s: pill.s
         active: pill.powerOpen
         enabled: pill.powerOpen
-        opacity: pill.powerOpen ? Math.pow(pill.morphCloseness, 1.3) : 0
-        visible: opacity > 0.01
-        Behavior on opacity {
+        readonly property real gate: pill.powerOpen ? 1 : 0
+        property real gateSmooth: gate
+        Behavior on gateSmooth {
             NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard }
         }
+        opacity: gateSmooth * Math.pow(pill.morphCloseness, 1.3)
+        visible: opacity > 0.01
         onRequestClose: pill.requestClose()
     }
 
@@ -814,11 +845,13 @@ Item {
         s: pill.s
         active: pill.mediaOpen
         enabled: pill.mediaOpen
-        opacity: pill.mediaOpen ? Math.pow(pill.morphCloseness, 1.3) : 0
-        visible: opacity > 0.01
-        Behavior on opacity {
+        readonly property real gate: pill.mediaOpen ? 1 : 0
+        property real gateSmooth: gate
+        Behavior on gateSmooth {
             NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard }
         }
+        opacity: gateSmooth * Math.pow(pill.morphCloseness, 1.3)
+        visible: opacity > 0.01
         onRequestClose: pill.requestClose()
     }
 
@@ -832,12 +865,14 @@ Item {
         s: pill.s
         active: pill.linkOpen
         enabled: pill.linkOpen
-        opacity: pill.linkOpen ? Math.pow(pill.morphCloseness, 1.3) : 0
-        visible: opacity > 0.01
-        onRequestClose: pill.requestClose()
-        Behavior on opacity {
+        readonly property real gate: pill.linkOpen ? 1 : 0
+        property real gateSmooth: gate
+        Behavior on gateSmooth {
             NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard }
         }
+        opacity: gateSmooth * Math.pow(pill.morphCloseness, 1.3)
+        visible: opacity > 0.01
+        onRequestClose: pill.requestClose()
     }
 
     Osd {

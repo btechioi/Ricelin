@@ -580,7 +580,13 @@ Item {
         }
     }
 
-    layer.enabled: true
+    /**
+     * The blur layer allocates an FBO the size of the whole pill; while the
+     * soul is hidden (wallpaper strip, toast, plain hover) that is pure GPU
+     * tax on an empty canvas, so the layer only exists while something is
+     * actually drawn or still fading.
+     */
+    layer.enabled: opacity > 0.001 || busy
     layer.effect: MultiEffect {
         blurEnabled: true
         blur: 0.34
