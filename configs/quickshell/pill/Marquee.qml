@@ -34,7 +34,6 @@ Item {
 
         SequentialAnimation {
             id: anim
-            running: root.overflowing && root.active
             loops: Animation.Infinite
             PauseAnimation { duration: 1800 }
             NumberAnimation {
@@ -56,11 +55,23 @@ Item {
             }
         }
 
-        onTextChanged: {
-            anim.stop();
-            x = 0;
-            if (root.overflowing && root.active)
-                anim.start();
-        }
+        onTextChanged: root.sync()
+    }
+
+    onActiveChanged: sync()
+    onOverflowingChanged: sync()
+    Component.onCompleted: sync()
+
+    /**
+     * Fully imperative start/stop: a `running` binding here would be severed
+     * by the first imperative stop() and leave the loop animating forever
+     * inside a hidden surface. Re-syncing on overflow changes also refreshes
+     * the captured from/to endpoints after a width change.
+     */
+    function sync() {
+        anim.stop();
+        label.x = 0;
+        if (overflowing && active)
+            anim.start();
     }
 }

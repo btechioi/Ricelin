@@ -77,9 +77,30 @@ ShellRoot {
         IdleInhibitor { window: inhibitWin; enabled: Flags.keepAwake }
     }
 
+    /**
+     * Only these raw events can change what the pill renders (per-monitor
+     * active workspace, minimized toplevels, monitor hotplug). Everything
+     * else — window drags, resizes, title spam — must not trigger the
+     * triple model refresh, which costs three Hyprland IPC round-trips.
+     */
+    readonly property var refreshEvents: ({
+        workspace: true, workspacev2: true,
+        createworkspace: true, createworkspacev2: true,
+        destroyworkspace: true, destroyworkspacev2: true,
+        moveworkspace: true, moveworkspacev2: true,
+        renameworkspace: true, activespecial: true,
+        focusedmon: true, focusedmonv2: true,
+        openwindow: true, closewindow: true,
+        movewindow: true, movewindowv2: true,
+        monitoradded: true, monitoraddedv2: true, monitorremoved: true
+    })
+
     Connections {
         target: Hyprland
-        function onRawEvent(event) { root.refresh(); }
+        function onRawEvent(event) {
+            if (root.refreshEvents[event.name])
+                root.refresh();
+        }
     }
 
     function toggleSurface(mon, surface) {
