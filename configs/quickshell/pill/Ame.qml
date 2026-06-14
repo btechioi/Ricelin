@@ -356,10 +356,10 @@ Item {
             ctx.scale(1 + stretch, 1 / (1 + stretch * 0.55));
             ctx.rotate(-ang);
             const hg = ctx.createRadialGradient(-R * 0.32, -R * 0.38, 0, 0, 0, R);
-            hg.addColorStop(0, "#f0795a");
+            hg.addColorStop(0, Theme.flameInk);
             hg.addColorStop(0.55, Theme.vermLit);
             hg.addColorStop(0.92, Theme.verm);
-            hg.addColorStop(1, "#7e2812");
+            hg.addColorStop(1, Theme.flameEmber);
             ctx.beginPath();
             ctx.arc(0, 0, R, 0, 7);
             ctx.fillStyle = hg;
@@ -374,7 +374,7 @@ Item {
                 ctx.arc(0, 0, R * (0.45 + k * 0.22),
                         root.swirl * (0.5 + k * 0.25) + k * 2.6,
                         root.swirl * (0.5 + k * 0.25) + k * 2.6 + 2.4);
-                ctx.strokeStyle = k ? "#8a2c14" : "#ffb38a";
+                ctx.strokeStyle = k ? Theme.flameBurn : Theme.flameTip;
                 ctx.lineWidth = 1.6 * root.s;
                 ctx.stroke();
             }
@@ -516,10 +516,10 @@ Item {
                 ctx.translate(bx, by);
                 ctx.scale(rx / ry, 1);
                 const tg = ctx.createRadialGradient(-ry * 0.3, -ry * 0.35, 0, 0, 0, ry);
-                tg.addColorStop(0, "#f0795a");
+                tg.addColorStop(0, Theme.flameInk);
                 tg.addColorStop(0.55, Theme.vermLit);
                 tg.addColorStop(0.92, Theme.verm);
-                tg.addColorStop(1, "#7e2812");
+                tg.addColorStop(1, Theme.flameEmber);
                 ctx.beginPath();
                 ctx.arc(0, 0, ry, 0, 7);
                 ctx.fillStyle = tg;
@@ -538,7 +538,7 @@ Item {
                 const sw = 4.2 * S;
                 const sg3 = ctx.createLinearGradient(0, by - sh / 2, 0, by + sh / 2);
                 sg3.addColorStop(0, Qt.rgba(0.878, 0.337, 0.231, 0.92));
-                sg3.addColorStop(0.5, "#f0795a");
+                sg3.addColorStop(0.5, Theme.flameInk);
                 sg3.addColorStop(1, Qt.rgba(0.878, 0.337, 0.231, 0.92));
                 ctx.beginPath();
                 ctx.roundedRect(bx - sw / 2, by - sh / 2, sw, sh, sw / 2, sw / 2);

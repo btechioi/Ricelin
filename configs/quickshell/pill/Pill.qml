@@ -251,10 +251,10 @@ Item {
                 const c = width / 2;
                 const R = (budArea.containsMouse ? 5.2 : 4) * pill.s;
                 const hg = ctx.createRadialGradient(c - R * 0.32, c - R * 0.38, 0, c, c, R);
-                hg.addColorStop(0, "#f0795a");
+                hg.addColorStop(0, Theme.flameInk);
                 hg.addColorStop(0.55, Theme.vermLit);
                 hg.addColorStop(0.92, Theme.verm);
-                hg.addColorStop(1, "#7e2812");
+                hg.addColorStop(1, Theme.flameEmber);
                 ctx.beginPath();
                 ctx.arc(c, c, R, 0, 7);
                 ctx.fillStyle = hg;

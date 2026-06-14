@@ -26,6 +26,16 @@ Singleton {
     readonly property color threadBg:  Qt.rgba(0.94, 0.88, 0.84, 0.13)
     readonly property color flameCore: "#ffd9c2"
     readonly property color flameGlow: "#ff9a64"
+
+    /**
+     * Flame canvas ramp — literal hex strings (not color), fed directly to
+     * Canvas addColorStop/strokeStyle. A color property would serialize to
+     * #aarrggbb and corrupt the gradient render.
+     */
+    readonly property string flameInk:   "#f0795a"
+    readonly property string flameEmber: "#7e2812"
+    readonly property string flameBurn:  "#8a2c14"
+    readonly property string flameTip:   "#ffb38a"
     readonly property color todayWarm: "#ffb38a"
     readonly property color ghost:     "#594636"
     readonly property color frameBg:      Qt.rgba(0.94, 0.88, 0.84, 0.055)

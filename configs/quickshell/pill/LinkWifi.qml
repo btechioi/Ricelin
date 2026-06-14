@@ -420,8 +420,8 @@ Item {
                                     SequentialAnimation on opacity {
                                         running: root.connecting && netItem.expanded
                                         loops: Animation.Infinite
-                                        NumberAnimation { from: 0.35; to: 1; duration: 420; easing.type: Easing.InOutSine }
-                                        NumberAnimation { from: 1; to: 0.35; duration: 420; easing.type: Easing.InOutSine }
+                                        NumberAnimation { from: 0.35; to: 1; duration: Motion.pulse; easing.type: Easing.InOutSine }
+                                        NumberAnimation { from: 1; to: 0.35; duration: Motion.pulse; easing.type: Easing.InOutSine }
                                     }
                                 }
 
