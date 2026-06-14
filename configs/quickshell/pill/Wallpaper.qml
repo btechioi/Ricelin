@@ -130,18 +130,26 @@ PillSurface {
             readonly property real hold: trashHeat.hold
             readonly property bool holding: trashHeat.holding
 
+            /**
+             * Dissolve a tile to nothing as its outer edge nears the clipped
+             * strip boundary, so the filmstrip ends fade out instead of being
+             * hard-cut by the pill's clip.
+             */
+            readonly property real edgeFade: {
+                var soft = 70 * root.s;
+                var gap = Math.min(x, root.width - (x + width));
+                return Math.max(0, Math.min(1, gap / soft));
+            }
+
             width: root.slotLerp(root.slotW, ao) * root.s
             height: root.slotLerp(root.slotH, ao) * root.s
             x: root.width / 2 + root.offsetX(off) - width / 2
             y: (root.height - height) / 2
             z: 10 - ao
             visible: ao <= 5
-            opacity: ao <= 4 ? 1 : Math.max(0, 5 - ao)
+            opacity: edgeFade * (ao <= 4 ? 1 : Math.max(0, 5 - ao))
 
-            onFocusedChanged: if (!focused) {
-                trashFill.stop();
-                trashDrain.restart();
-            }
+            onFocusedChanged: if (!focused) trashHeat.cancel()
 
             ClippingRectangle {
                 id: card
@@ -174,17 +182,30 @@ PillSurface {
                 }
 
                 Rectangle {
+                    id: consume
                     anchors.left: parent.left
-                    anchors.leftMargin: 8 * root.s
+                    anchors.right: parent.right
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 6 * root.s
-                    height: 2 * root.s
-                    width: (card.width - 16 * root.s) * tile.hold
+                    height: card.height * tile.hold
                     visible: tile.holding
                     gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: Qt.alpha(Theme.vermLit, 0.15) }
-                        GradientStop { position: 1.0; color: Theme.vermLit }
+                        GradientStop { position: 0.0; color: Qt.alpha(Theme.vermBurn, 0.66) }
+                        GradientStop { position: 0.74; color: Qt.alpha(Theme.vermLit, 0.30) }
+                        GradientStop { position: 1.0; color: Qt.alpha(Theme.flameGlow, 0.0) }
+                    }
+
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        height: 2 * root.s
+                        opacity: Math.min(1, tile.hold * 3)
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: Qt.alpha(Theme.flameGlow, 0.0) }
+                            GradientStop { position: 0.5; color: Theme.flameGlow }
+                            GradientStop { position: 1.0; color: Qt.alpha(Theme.flameGlow, 0.0) }
+                        }
                     }
                 }
             }

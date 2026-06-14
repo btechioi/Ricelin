@@ -258,16 +258,22 @@ PillSurface {
                     elide: Text.ElideRight
                     width: Math.min(implicitWidth, parent.width - icon.width - 10 * root.s - sec.width - ret.width - 12 * root.s)
                 }
+                TextMetrics {
+                    id: retMetrics
+                    font.family: Theme.font
+                    font.pixelSize: 12 * root.s
+                    text: "↵"
+                }
                 Text {
                     id: ret
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.right: parent.right
-                    text: "↵"
+                    text: retMetrics.text
                     color: Theme.vermLit
                     font.family: Theme.font
                     font.pixelSize: 12 * root.s
                     visible: appRow.selected
-                    width: visible ? implicitWidth + 6 * root.s : 0
+                    width: visible ? retMetrics.advanceWidth + 6 * root.s : 0
                     horizontalAlignment: Text.AlignRight
                 }
                 Text {
