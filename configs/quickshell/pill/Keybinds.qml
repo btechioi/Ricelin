@@ -72,6 +72,17 @@ PillSurface {
         });
     }
 
+    /**
+     * Display form of a combo: mouse tokens are spelled out so a scroll or button
+     * gesture reads clearly. These binds are shown read-only.
+     */
+    function comboPretty(c) {
+        return c.replace("mouse_up", "Scroll ↑")
+                .replace("mouse_down", "Scroll ↓")
+                .replace("mouse:272", "LMB")
+                .replace("mouse:273", "RMB");
+    }
+
     function refresh() {
         root.binds = Binds.parse(bindsFile.text());
         if (root.focusIndex >= root.filtered.length)
@@ -103,6 +114,8 @@ PillSurface {
     }
 
     function openEdit(b) {
+        if (b.isMouse)
+            return;
         root.conflict = "";
         root.formAdd = false;
         root.formLine = b.lineIndex;
@@ -467,7 +480,7 @@ PillSurface {
                     Text {
                         id: comboText
                         anchors.centerIn: parent
-                        text: brow.modelData.combo
+                        text: root.comboPretty(brow.modelData.combo)
                         color: brow.focused ? Theme.cream : Theme.subtle
                         font.family: Theme.font
                         font.pixelSize: 11 * root.s
@@ -513,7 +526,7 @@ PillSurface {
                 MouseArea {
                     anchors.fill: parent
                     enabled: !root.listening
-                    cursorShape: Qt.PointingHandCursor
+                    cursorShape: brow.modelData.isMouse ? Qt.ArrowCursor : Qt.PointingHandCursor
                     onClicked: {
                         root.focusIndex = brow.index;
                         root.openEdit(brow.modelData);

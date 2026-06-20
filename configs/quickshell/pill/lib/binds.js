@@ -134,9 +134,8 @@ function parseLine(raw, lineIndex, modValue) {
     var action = args[1];
     var opts = args.length >= 3 ? args.slice(2).join(", ") : "";
 
-    if (isMouseCombo(resolved.combo) || optsHasMouse(opts)) return null;
-
     var name = nameComment(raw, endInner);
+    var mouse = isMouseCombo(resolved.combo) || optsHasMouse(opts);
 
     return {
         combo: resolved.combo,
@@ -145,6 +144,7 @@ function parseLine(raw, lineIndex, modValue) {
         action: action,
         cmd: execCmd(action),
         isExec: isExecAction(action),
+        isMouse: mouse,
         opts: opts,
         lineIndex: lineIndex,
         raw: raw,
