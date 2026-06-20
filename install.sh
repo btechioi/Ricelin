@@ -326,6 +326,14 @@ install_deps() {
 	pkgs="$CORE_PKGS"
 	[ "$WANT_FULL" -eq 1 ] && pkgs="$pkgs $FULL_PKGS"
 
+	# Most people run this on a Hyprland they already have. Do not replace their
+	# compositor with hyprland-git; keep it and just note the lua-config needs a
+	# recent Hyprland. Only pull hyprland-git when nothing is installed.
+	if have Hyprland; then
+		pkgs=$(printf '%s' "$pkgs" | sed 's/hyprland-git//')
+		say "  Hyprland already installed, keeping it (the lua config needs a recent Hyprland)"
+	fi
+
 	case "$pm" in
 	yay | paru)
 		step "Syncing and installing deps via $pm"
