@@ -6,7 +6,6 @@ import Quickshell.Services.Notifications
 Singleton {
     id: root
 
-    property bool dnd: false
     property var seenIds: ({})
     property var arrivalMs: ({})
     property var popups: []
@@ -261,7 +260,7 @@ Singleton {
             n.tracked = true;
             root.hookClosed(n);
             var critical = n.urgency === NotificationUrgency.Critical;
-            if (!root.dnd || critical)
+            if (!Flags.dnd || critical)
                 root.popups = root.popups.concat([n]).slice(-3);
         }
     }
