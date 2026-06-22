@@ -42,6 +42,12 @@ hl.window_rule({
 })
 
 hl.window_rule({
+    name  = "float-qalculate",
+    match = { class = "io.github.Qalculate.qalculate-qt" },
+    float = true,
+})
+
+hl.window_rule({
     name   = "float-dolphin",
     match  = { class = "org.kde.dolphin" },
     float  = true,
