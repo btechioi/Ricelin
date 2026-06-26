@@ -22,6 +22,7 @@ import os
 import shlex
 import shutil
 import subprocess
+import sys
 import threading
 from pathlib import Path
 
@@ -398,6 +399,36 @@ def deploy_brave_theme(source, dry):
     return True, ""
 
 
+def _seed_update_baseline(source, config_root, dry):
+    """
+    Hand the in-app updater the commit just installed, so its first check counts new
+    commits from here instead of treating a fresh box as already up to date. Without
+    it the updater has no synced sha to count from and reports a box that is really
+    several commits back as current, with no way to ever reach an apply.
+
+    Best effort: only the git-clone install path (the real curl-bash flow) has a sha
+    to record, so a tarball or dev run with no checkout is simply skipped. The engine
+    itself ignores a box that already carries a manifest or that updates through
+    plain git, so calling it here is always safe.
+    """
+    if dry:
+        return
+    repo = Path(source).resolve().parent
+    try:
+        head = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"],
+            capture_output=True, text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return
+    engine = Path(config_root) / "hypr" / "scripts" / "ricelin-update.py"
+    if not head or not engine.exists():
+        return
+    subprocess.run(
+        [sys.executable, str(engine), "baseline", "--sha", head,
+         "--config-root", str(config_root)],
+        check=False)
+
+
 def _report(plan, failures, notes, info, choices, args, do_pkgs, dry):
     """The closing report: a package tally, the next steps, and anything still owed."""
     tally = None
@@ -694,6 +725,7 @@ def run(args):
         if keepalive_stop:
             keepalive_stop()
 
+    _seed_update_baseline(args.source, deploy.CONFIG_ROOT, dry)
     _report(plan, failures, notes, info, choices, args, do_pkgs, dry)
     return 0
 

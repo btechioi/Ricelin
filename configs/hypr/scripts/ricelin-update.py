@@ -323,6 +323,30 @@ def baseline_modules(manifest, head):
         mods[rel] = head
 
 
+def baseline(config_root, sha):
+    """
+    Record the freshly installed commit as the update baseline. Without this the
+    very first check has no synced sha to count from, so behind_count returns zero
+    and a box that is really several commits back reports itself up to date, with no
+    way to ever reach an apply that would set the baseline. The installer calls this
+    right after it deploys, handing over the commit it just installed.
+
+    No clone and no network: a baseline is only the synced sha plus the same sha as
+    the merge base for every protected file. Skipped when a manifest already exists,
+    so a re-run never resets a tracked baseline, and in devmode, since that path
+    updates through plain git and never wants a manifest at all.
+    """
+    if not sha:
+        return error_result("error", "baseline needs --sha")
+    if is_devmode(config_root):
+        return {"status": "devmode", "syncedSha": ""}
+    if manifest_path().exists():
+        return {"status": "kept", "syncedSha": ""}
+    manifest = {"syncedSha": sha, "modules": {rel: sha for rel in PROTECTED}}
+    save_manifest(manifest)
+    return {"status": "baselined", "syncedSha": sha}
+
+
 # ── Missing dependencies ──────────────────────────────────────────────────────
 #
 # A Ricelin update can introduce a new package the rice now needs (cava did once).
@@ -630,11 +654,15 @@ def parse_args(argv):
     config_root = Path.home() / ".config"
     take = set()
     install_ids = set()
+    sha = None
     i = 0
     while i < len(argv):
         arg = argv[i]
-        if arg in ("check", "apply"):
+        if arg in ("check", "apply", "baseline"):
             mode = arg
+        elif arg == "--sha":
+            i += 1
+            sha = take_value(argv, i, "--sha")
         elif arg == "--remote":
             i += 1
             remote = take_value(argv, i, "--remote")
@@ -650,7 +678,7 @@ def parse_args(argv):
             value = take_value(argv, i, "--install-deps")
             install_ids = {p.strip() for p in value.split(",") if p.strip()}
         i += 1
-    return mode, remote, config_root, take, install_ids
+    return mode, remote, config_root, take, install_ids, sha
 
 
 def main(argv):
@@ -660,8 +688,11 @@ def main(argv):
     trailing flag with no value becomes an error JSON rather than an IndexError.
     """
     try:
-        mode, remote, config_root, take, install_ids = parse_args(argv)
-        result = run(mode, remote, config_root, take, install_ids)
+        mode, remote, config_root, take, install_ids, sha = parse_args(argv)
+        if mode == "baseline":
+            result = baseline(config_root, sha)
+        else:
+            result = run(mode, remote, config_root, take, install_ids)
     except BadArgs as exc:
         print(json.dumps(error_result("error", str(exc))))
         return 0
