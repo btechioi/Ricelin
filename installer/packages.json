@@ -55,6 +55,9 @@
     { "id": "fish", "group": "core", "required": true, "desc": "The shell", "aur": false,
       "names": { "arch": "fish", "debian": "fish", "fedora": "fish", "suse": "fish" }, "fallback": null },
 
+    { "id": "zoxide", "group": "core", "required": true, "desc": "Directory jumper the fish config initialises on startup", "aur": false,
+      "names": { "arch": "zoxide", "debian": "zoxide", "fedora": "zoxide", "suse": "zoxide" }, "fallback": null },
+
     { "id": "cliphist", "group": "core", "required": true, "desc": "Clipboard history behind the pill surface", "aur": false,
       "names": { "arch": "cliphist", "debian": "cliphist", "fedora": "cliphist", "suse": "cliphist" }, "fallback": null },
 
