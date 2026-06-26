@@ -167,6 +167,21 @@ SettingsSurface {
         takePaths = ({});
     }
 
+    /**
+     * The body for the post-restart toast, composed before clearPending wipes the
+     * changelog. The version line confirms what landed, and the top change names
+     * what is new with a count when more rode along.
+     */
+    function updatedBody() {
+        var v = root.version.replace(" ", " · ");
+        if (root.changelog.length > 0) {
+            var more = root.changelog.length > 1
+                ? "  (+" + (root.changelog.length - 1) + " more)" : "";
+            return "Now on " + v + "\n" + root.changelog[0] + more;
+        }
+        return "Now on " + v;
+    }
+
     function ingest(data) {
         root.status = data.status || "error";
         root.behindCount = data.behind || 0;
@@ -256,6 +271,8 @@ SettingsSurface {
                  * restart or check; the failure notice stays put until then.
                  */
                 if (root.restartNeeded && root.depFailures.length === 0) {
+                    markerProc.body = root.updatedBody();
+                    markerProc.running = true;
                     root.clearPending();
                     restartTimer.start();
                 }
@@ -282,6 +299,19 @@ SettingsSurface {
         id: restartProc
         command: ["setsid", "sh", "-c",
             "qs -c pill kill; sleep 0.4; qs -c pill ipc show >/dev/null 2>&1 || qs -c pill -d"]
+    }
+
+    /**
+     * Drop a one-shot marker the restarted shell reads to toast what landed, since
+     * the relaunch wipes this surface before any inline confirmation can stick. The
+     * body rides in as a positional arg so the value is never re-parsed by the shell.
+     */
+    Process {
+        id: markerProc
+        property string body: ""
+        command: ["sh", "-c",
+            "d=\"${XDG_STATE_HOME:-$HOME/.local/state}/ricelin\"; mkdir -p \"$d\"; printf '%s' \"$1\" > \"$d/updated\"",
+            "sh", body]
     }
 
     Column {
