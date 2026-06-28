@@ -37,14 +37,29 @@ PillSurface {
         var n = player.identity ? player.identity : (player.desktopEntry ? player.desktopEntry : "");
         return n.toLowerCase();
     }
-    /** Many YouTube videos expose no MPRIS art, so fall back to the derived thumbnail. */
+    /**
+     * A Twitch stream has no MPRIS art; the streamer avatar is the nicest cover
+     * but its url needs a lookup (decapi resolves the channel without a token),
+     * so it arrives async. The derived live preview stands in until it lands.
+     */
+    property string twitchAvatar: ""
+    property string twitchChannel: ""
+
+    /** Many videos and streams expose no MPRIS art, so fall back to the derived thumbnail. */
     readonly property string artUrl: {
         if (!hasPlayer)
             return "";
         if (player.trackArtUrl)
             return player.trackArtUrl;
-        return ytThumb(trackUrl);
+        if (twitchAvatar.length > 0 && isTwitch(trackUrl))
+            return twitchAvatar;
+        return derivedThumb(trackUrl);
     }
+    /** A bogus near-INT64 length is how live streams report "no end". */
+    readonly property bool live: hasPlayer && (lengthSec <= 0 || lengthSec > 86400)
+    /** Source shown title-cased: "Youtube", "Twitch", "Spotify". */
+    readonly property string serviceLabel: playerService.length > 0
+        ? playerService.charAt(0).toUpperCase() + playerService.slice(1) : ""
     readonly property bool hasArt: artUrl !== ""
         && (coverPair.front.status === Image.Ready || coverPair.back.status === Image.Ready)
     /**
@@ -94,10 +109,45 @@ PillSurface {
         return parts.length >= 2 ? parts[parts.length - 2] : parts[0];
     }
 
-    /** YouTube thumbnail from a watch or youtu.be url; mqdefault is clean 16:9 and always exists. */
-    function ytThumb(url) {
-        var m = url.match(/[?&]v=([\w-]{11})/) || url.match(/youtu\.be\/([\w-]{11})/);
-        return m ? "https://img.youtube.com/vi/" + m[1] + "/mqdefault.jpg" : "";
+    /**
+     * Cover for players that expose no MPRIS art: YouTube's thumbnail from the
+     * watch id (mqdefault is clean 16:9 and always exists), or a Twitch stream's
+     * live preview from the channel.
+     */
+    function derivedThumb(url) {
+        var y = url.match(/[?&]v=([\w-]{11})/) || url.match(/youtu\.be\/([\w-]{11})/);
+        if (y)
+            return "https://img.youtube.com/vi/" + y[1] + "/mqdefault.jpg";
+        var t = url.match(/^https?:\/\/(?:www\.)?twitch\.tv\/([^\/?#]+)/);
+        if (t)
+            return "https://static-cdn.jtvnw.net/previews-ttv/live_user_" + t[1] + "-320x180.jpg";
+        return "";
+    }
+
+    function isTwitch(url) {
+        return /^https?:\/\/(?:www\.)?twitch\.tv\//.test(url);
+    }
+
+    /** Resolve the streamer avatar once per channel; failure keeps the live preview. */
+    function resolveTwitch() {
+        var t = trackUrl.match(/^https?:\/\/(?:www\.)?twitch\.tv\/([^\/?#]+)/);
+        var ch = t ? t[1].toLowerCase() : "";
+        if (ch === twitchChannel)
+            return;
+        twitchChannel = ch;
+        twitchAvatar = "";
+        if (ch.length === 0)
+            return;
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                var r = xhr.responseText.trim();
+                if (r.indexOf("https:") === 0 && r.length > 12 && root.twitchChannel === ch)
+                    root.twitchAvatar = r;
+            }
+        };
+        xhr.open("GET", "https://decapi.me/twitch/avatar/" + ch);
+        xhr.send();
     }
 
     function fmt(sec) {
@@ -128,7 +178,8 @@ PillSurface {
         bleedSrc.source = artUrl;
     }
     onTrackKeyChanged: loadArt()
-    onActiveChanged: if (active) loadArt()
+    onTrackUrlChanged: if (active) resolveTwitch()
+    onActiveChanged: if (active) { resolveTwitch(); loadArt(); }
     onTitleChanged: if (playing && active) pulseAnim.restart()
 
     Timer {
@@ -397,9 +448,12 @@ PillSurface {
             anchors.bottomMargin: 44 * root.s
             elide: Text.ElideRight
             text: {
-                const head = root.playerService.length > 0 ? root.playerService + " · " : "";
+                const svc = root.serviceLabel;
+                if (root.live)
+                    return svc.length > 0 ? svc + " - Live" : "Live";
+                const head = svc.length > 0 ? svc + " / " : "";
                 const cur = root.fmt(root.dragging ? root.dragFrac * root.lengthSec : root.positionSec);
-                return head + cur + " · " + root.fmt(root.lengthSec);
+                return head + cur + " - " + root.fmt(root.lengthSec);
             }
             color: Theme.dim
             font.family: Theme.font
