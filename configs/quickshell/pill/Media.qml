@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
 import Quickshell.Widgets
-import Quickshell.Services.Mpris
 import "Singletons"
 
 /**
@@ -18,30 +17,8 @@ import "Singletons"
 PillSurface {
     id: root
 
-    /**
-     * Pick order: playing > paused-with-track > controllable. Keeps a browser
-     * that exposes an empty MPRIS endpoint from shadowing a paused player that
-     * still has a track.
-     */
-    readonly property var player: {
-        var list = Mpris.players.values;
-        if (!list || list.length === 0)
-            return null;
-        var withTrack = null;
-        var controllable = null;
-        for (var i = 0; i < list.length; i++) {
-            var p = list[i];
-            if (!p)
-                continue;
-            if (p.isPlaying)
-                return p;
-            if (!withTrack && p.canControl && p.trackTitle && p.trackTitle.length > 0)
-                withTrack = p;
-            if (!controllable && p.canControl)
-                controllable = p;
-        }
-        return withTrack ? withTrack : (controllable ? controllable : list[0]);
-    }
+    /** The last-commanded player, shared with the media keys via [[Players]]. */
+    readonly property var player: Players.active
 
     readonly property bool hasPlayer: player !== null
     readonly property bool playing: hasPlayer && player.isPlaying
@@ -57,6 +34,14 @@ PillSurface {
     readonly property string artUrl: hasPlayer && player.trackArtUrl ? player.trackArtUrl : ""
     readonly property bool hasArt: artUrl !== ""
         && (coverPair.front.status === Image.Ready || coverPair.back.status === Image.Ready)
+    /**
+     * Identity of the current track. Browsers reuse one art file path and
+     * overwrite it per video, so the artUrl string alone misses the change;
+     * folding in player and title catches it, and a fresh decode (cache off)
+     * pulls the new pixels.
+     */
+    readonly property string trackKey: hasPlayer
+        ? ((player.dbusName || "") + "|" + title + "|" + artUrl) : ""
     readonly property real lengthSec: hasPlayer && player.length > 0 ? player.length : 0
     readonly property real positionSec: hasPlayer ? player.position : 0
     readonly property real playFrac: lengthSec > 0 ? Math.max(0, Math.min(1, positionSec / lengthSec)) : 0
@@ -104,10 +89,18 @@ PillSurface {
      * Art loads only while the surface is open. A 24/7 daemon shouldn't fetch
      * and decode remote cover URLs on every background track change, and the
      * 2026-06-12 segfault hit exactly here during a closed-surface Spotify
-     * metadata update.
+     * metadata update. The track key drives the reload so a reused art path
+     * still refreshes when the song changes.
      */
-    onArtUrlChanged: if (active) coverPair.load(artUrl)
-    onActiveChanged: if (active) coverPair.load(artUrl)
+    function loadArt() {
+        if (!active)
+            return;
+        coverPair.load(artUrl, trackKey);
+        bleedSrc.source = "";
+        bleedSrc.source = artUrl;
+    }
+    onTrackKeyChanged: loadArt()
+    onActiveChanged: if (active) loadArt()
     onTitleChanged: if (playing && active) pulseAnim.restart()
 
     Timer {
@@ -186,11 +179,10 @@ PillSurface {
         Image {
             id: bleedSrc
             anchors.fill: parent
-            source: root.active ? root.artUrl : ""
             sourceSize: Qt.size(128, 128)
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
-            cache: true
+            cache: false
             visible: false
         }
 
@@ -222,20 +214,29 @@ PillSurface {
 
             property var front: coverA
             property var back: coverB
+            /** Track key currently shown in front, and the one staged on back. */
+            property string shownKey: ""
+            property string pendingKey: ""
 
-            /** Stage `url` on the hidden back image; reveal() runs once it decodes. */
-            function load(url) {
+            /**
+             * Stage the art for `key` on the hidden back image; reveal() runs
+             * once it decodes. Keyed on the track, not the url, so a reused art
+             * path still reloads on a new song; the clear-then-set forces a
+             * fresh decode past the (disabled) image cache.
+             */
+            function load(url, key) {
+                if (key === coverPair.shownKey && front.status === Image.Ready)
+                    return;
                 coverFade.stop();
                 back.opacity = 0;
+                coverPair.pendingKey = key;
                 if (!url) {
                     front.source = "";
                     back.source = "";
+                    coverPair.shownKey = key;
                     return;
                 }
-                if (String(front.source) === url) {
-                    back.source = "";
-                    return;
-                }
+                back.source = "";
                 back.source = url;
             }
 
@@ -250,6 +251,16 @@ PillSurface {
                 back = old;
                 old.source = "";
                 old.opacity = 0;
+                coverPair.shownKey = coverPair.pendingKey;
+            }
+
+            /** Art that won't decode drops to the fallback glyph, never the old cover. */
+            function fail() {
+                coverFade.stop();
+                front.source = "";
+                back.source = "";
+                back.opacity = 0;
+                coverPair.shownKey = coverPair.pendingKey;
             }
 
             Rectangle {
@@ -265,8 +276,15 @@ PillSurface {
                 sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
-                cache: true
-                onStatusChanged: if (status === Image.Ready && coverPair.back === this) coverPair.reveal()
+                cache: false
+                onStatusChanged: {
+                    if (coverPair.back !== this)
+                        return;
+                    if (status === Image.Ready)
+                        coverPair.reveal();
+                    else if (status === Image.Error)
+                        coverPair.fail();
+                }
             }
 
             Image {
@@ -277,8 +295,15 @@ PillSurface {
                 sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
-                cache: true
-                onStatusChanged: if (status === Image.Ready && coverPair.back === this) coverPair.reveal()
+                cache: false
+                onStatusChanged: {
+                    if (coverPair.back !== this)
+                        return;
+                    if (status === Image.Ready)
+                        coverPair.reveal();
+                    else if (status === Image.Error)
+                        coverPair.fail();
+                }
             }
 
             GlyphIcon {
