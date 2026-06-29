@@ -14,13 +14,7 @@
   };
 
   outputs =
-    { self, nixpkgs, hyprland, quickshell }:
-    let
-      forSystem = system: {
-        inherit hyprland quickshell;
-        pkgs = import nixpkgs { inherit system; };
-      };
-    in
+    { nixpkgs, hyprland, quickshell }:
     {
       nixosModules = {
         ricelin = import ./modules/nixos;
