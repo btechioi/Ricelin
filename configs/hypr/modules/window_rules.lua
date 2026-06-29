@@ -51,7 +51,7 @@ hl.window_rule({
     name   = "float-dolphin",
     match  = { class = "org.kde.dolphin" },
     float  = true,
-    size   = { 1500, 850 },
+    size   = { 1200, 680 },
     center = true,
 })
 

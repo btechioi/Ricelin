@@ -41,6 +41,7 @@
         systemd = import ./modules/home/systemd.nix;
         cava = import ./modules/home/cava.nix;
         quickshell = import ./modules/home/quickshell.nix;
+        matugen = import ./modules/home/matugen.nix;
       };
     };
 }

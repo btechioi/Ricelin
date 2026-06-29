@@ -1,0 +1,19 @@
+{
+  "surface": "{{colors.surface.default.hex}}",
+  "surface_container_low": "{{colors.surface_container_low.default.hex}}",
+  "surface_container": "{{colors.surface_container.default.hex}}",
+  "surface_container_high": "{{colors.surface_container_high.default.hex}}",
+  "surface_container_highest": "{{colors.surface_container_highest.default.hex}}",
+  "outline_variant": "{{colors.outline_variant.default.hex}}",
+  "primary": "{{colors.primary.default.hex}}",
+  "primary_container": "{{colors.primary_container.default.hex}}",
+  "on_primary_container": "{{colors.on_primary_container.default.hex}}",
+  "outline": "{{colors.outline.default.hex}}",
+  "cream": "{{colors.on_surface.default.hex}}",
+  "bright": "{{colors.on_surface.default.hex}}",
+  "subtle": "{{colors.on_surface_variant.default.hex}}",
+  "dim": "{{colors.outline.default.hex}}",
+  "faint": "{{colors.outline_variant.default.hex}}",
+  "icon_dim": "{{colors.on_surface_variant.default.hex}}",
+  "tick_rest": "{{colors.on_surface_variant.default.hex}}"
+}

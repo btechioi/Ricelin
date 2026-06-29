@@ -1,0 +1,67 @@
+[config]
+version_check = false
+fallback_color = "#ffbf9b"
+prefer = "saturation"
+caching = false
+expr_prefix = "{{"
+expr_postfix = "}}"
+block_prefix = "<*"
+block_postfix = "*>"
+
+[templates.colors]
+input_path = "~/.config/matugen/templates/colors.json.template"
+output_path = "~/.config/quickshell/colors.json"
+
+[templates.sway]
+input_path = "~/.config/matugen/templates/sway.template"
+output_path = "~/.config/sway/colors.conf"
+post_hook= "swaymsg reload"
+
+[templates.base16]
+input_path = "~/.config/matugen/templates/base16.mustache"
+output_path = "~/.config/stylix/scheme.yaml"
+
+[templates.ricelin-colors]
+input_path = "~/.config/matugen/templates/ricelin-colors.json"
+output_path = "~/.cache/ricelin/colors.json"
+
+[templates.hypr-colors]
+input_path = "~/.config/matugen/templates/hypr-colors.lua"
+output_path = "~/.cache/ricelin/hypr-colors.lua"
+
+[templates.ghostty-colors]
+input_path = "~/.config/matugen/templates/ghostty-colors"
+output_path = "~/.cache/ricelin/ghostty-colors"
+
+[templates.gtk3]
+input_path = "~/.config/matugen/templates/gtk-3.0/gtk.css"
+output_path = "~/.config/gtk-3.0/gtk.css"
+
+[templates.gtk4]
+input_path = "~/.config/matugen/templates/gtk-4.0/gtk.css"
+output_path = "~/.config/gtk-4.0/gtk.css"
+
+[templates.fuzzel]
+input_path = "~/.config/matugen/templates/fuzzel/fuzzel_theme.ini"
+output_path = "~/.config/fuzzel/fuzzel_theme.ini"
+
+[templates.hyprlock]
+input_path = "~/.config/matugen/templates/hyprland/hyprlock-colors.conf"
+output_path = "~/.config/hypr/hyprlock-colors.conf"
+
+[templates.zen-usercontent]
+input_path = "~/.config/matugen/templates/zen/userContent.css.tpl"
+output_path = "~/.zen/2dex7qss.Default Profile/chrome/userContent.css"
+
+[templates.zen-userchrome]
+input_path = "~/.config/matugen/templates/zen/userChrome.css.tpl"
+output_path = "~/.zen/2dex7qss.Default Profile/chrome/userChrome.css"
+
+[templates.zed]
+input_path = "~/.config/matugen/templates/zed-material.json"
+output_path = "~/.config/zed/themes/material-you.json"
+
+[templates.kde-color]
+input_path = "~/.config/matugen/templates/kde/color.txt"
+output_path = "~/.local/state/quickshell/user/generated/color.txt"
+post_hook = "bash ~/.config/matugen/templates/kde/kde-material-you-colors-wrapper.sh >/dev/null 2>&1 || true"

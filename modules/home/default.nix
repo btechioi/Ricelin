@@ -9,5 +9,6 @@
     ./systemd.nix
     ./cava.nix
     ./quickshell.nix
+    ./matugen.nix
   ];
 }
