@@ -61,6 +61,22 @@ output_path = "~/.zen/2dex7qss.Default Profile/chrome/userChrome.css"
 input_path = "~/.config/matugen/templates/zed-material.json"
 output_path = "~/.config/zed/themes/material-you.json"
 
+[templates.firefox-colors]
+input_path = "~/.config/matugen/templates/firefox/colors.css.tpl"
+output_path = "~/.zen/2dex7qss.Default Profile/chrome/colors.css"
+
+[templates.firefox-youtube]
+input_path = "~/.config/matugen/templates/firefox/websites/youtube.css.tpl"
+output_path = "~/.zen/2dex7qss.Default Profile/chrome/websites/youtube.css"
+
+[templates.firefox-bitwarden]
+input_path = "~/.config/matugen/templates/firefox/websites/bitwarden.css.tpl"
+output_path = "~/.zen/2dex7qss.Default Profile/chrome/websites/bitwarden.css"
+
+[templates.firefox-github]
+input_path = "~/.config/matugen/templates/firefox/websites/github.css.tpl"
+output_path = "~/.zen/2dex7qss.Default Profile/chrome/websites/github.css"
+
 [templates.kde-color]
 input_path = "~/.config/matugen/templates/kde/color.txt"
 output_path = "~/.local/state/quickshell/user/generated/color.txt"

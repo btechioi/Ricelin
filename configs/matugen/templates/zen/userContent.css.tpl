@@ -1,5 +1,10 @@
 /* Matugen Template for userContent.css */
 
+@import url("/home/banumath/.zen/2dex7qss.Default Profile/chrome/colors.css");
+@import url("/home/banumath/.zen/2dex7qss.Default Profile/chrome/websites/youtube.css");
+@import url("/home/banumath/.zen/2dex7qss.Default Profile/chrome/websites/bitwarden.css");
+@import url("/home/banumath/.zen/2dex7qss.Default Profile/chrome/websites/github.css");
+
 @media (prefers-color-scheme: dark) {
 
   /* Common variables affecting all pages */
