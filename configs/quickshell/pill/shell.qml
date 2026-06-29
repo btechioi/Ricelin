@@ -218,8 +218,7 @@ ShellRoot {
 
             screen: modelData
             color: "transparent"
-            exclusionMode: ExclusionMode.Normal
-            exclusiveZone: restHeight + topGap
+            exclusionMode: ExclusionMode.Ignore
             aboveWindows: true
 
             anchors { top: true; left: true; right: true }
