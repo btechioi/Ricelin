@@ -1,0 +1,7 @@
+{
+  General = {
+    background = "assets/bg.mp4";
+    accent = "#c0442b";
+    scale = 1.0;
+  };
+}

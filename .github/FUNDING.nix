@@ -1,0 +1,4 @@
+{
+  github = "Gakuseei";
+  ko_fi = "gakuseei";
+}
