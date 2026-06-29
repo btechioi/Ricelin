@@ -52,3 +52,4 @@ docs/
 /configs/grub/probe-sda4.sh
 /configs/grub/10_ricelin
 __pycache__/
+My-NixOS
