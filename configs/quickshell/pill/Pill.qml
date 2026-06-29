@@ -748,10 +748,11 @@ Item {
     Item {
         id: rest
         anchors.fill: parent
-        clip: pill.morphCloseness < 1
         opacity: (pill.expanded || pill.mode === "toast" || pill.mode === "osd" || pill.mode === "quickChoose" || pill.mode === "quickCount") ? 0 : Math.pow(pill.morphCloseness, 1.2)
         visible: opacity > 0.01
         Behavior on opacity { NumberAnimation { duration: pill.mode === "rest" ? Motion.fast : 100 } }
+
+        clip: true
 
         Row {
             id: restRow
@@ -837,7 +838,7 @@ Item {
     Item {
         id: hover
         anchors.fill: parent
-        clip: pill.morphCloseness < 1
+        clip: true
         opacity: pill.mode === "hover" ? Math.pow(pill.morphCloseness, 2.5) : 0
         visible: true
         Behavior on opacity { NumberAnimation { duration: pill.mode === "hover" ? Motion.fast : 20 } }
